@@ -54,6 +54,23 @@ export namespace Errors {
     }
 
     /**
+     * @description Error thrown when a duplicate instance id was found.
+     * @export
+     * @class DuplicateInstanceError
+     * @extends {VocabularyError}
+     */
+    export class DuplicateInstanceError extends VocabularyError {
+        /**
+         * Creates an instance of DuplicateInstanceError.
+         * @param {string} instanceId The duplicate instance id.
+         * @memberof DuplicateInstanceError
+         */
+        constructor(public readonly instanceId: string) {
+            super(`Duplicate instance id ${instanceId}. Another instance with the same id already exists`);
+        }
+    }
+
+    /**
      * @description Error thrown when an invalid resource id is found.
      * @export
      * @class InvalidResourceId
@@ -84,6 +101,25 @@ export namespace Errors {
          */
         constructor(public readonly instanceId: string) {
             super(`At least one class is required for instance ${instanceId}`);
+        }
+    }
+
+    /**
+     * @description Error thrown when a value error occurs for an instance property.
+     * @export
+     * @class InstancePropertyValueError
+     * @extends {VocabularyError}
+     */
+    export class InstancePropertyValueError extends VocabularyError {
+        /**
+         * Creates an instance of InstancePropertyValueError.
+         * @param {string} instanceId The id of the instance that generated the error.
+         * @param {string} propertyId The id of the property for which this error occured.
+         * @param {string} details
+         * @memberof InstancePropertyValueError
+         */
+        constructor(public readonly instanceId: string, public readonly propertyId: string, details: string) {
+            super(`Invalid operation on container property ${propertyId} for instance ${instanceId}. Details: ${details}`);
         }
     }
 

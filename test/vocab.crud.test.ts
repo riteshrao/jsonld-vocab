@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import Vocabulary, { Class, Property, ContainerType, ValueType } from '../src';
 import DataType from '../src/dataType';
 import Errors from '../src/errors';
+import Instance from '../src/instance';
 
 describe('Vocabulary CRUD', () => {
     let vocabulary: Vocabulary;
@@ -267,15 +268,120 @@ describe('Vocabulary CRUD', () => {
             const managerClass = employeeClass.createSubClass('Manager');
             managerClass.createProperty('Manager/manages').setRange(employeeClass);
             managerClass.getProperty('Manager/manages').term = 'manages';
-            managerClass.getProperty('Manager/manages').valueType = ValueType.id;
+            managerClass.getProperty('Manager/manages').valueType = ValueType.vocab;
             managerClass.getProperty('Manager/manages').container = ContainerType.set;
+
+            vocabulary.createInstance('Person/persons/johnd', 'Person');
+            vocabulary.createInstance('Person/persons/janed', employeeClass);
+            vocabulary.createInstance('Person/persons/jilld', managerClass);
+            vocabulary.createInstance('Person/persons/jaked', employeeClass, 'Manager');
         });
 
-        it('can create an instance', () => {
-            const instance = vocabulary.createInstance('urn:example-org:entities/persons/johnd', 'Person');
-            expect(instance.id).to.equal('urn:example-org:entities/persons/johnd');
-            expect(instance.isInstanceOf('Person')).to.be.true;
-            expect(vocabulary.instances.count()).to.be.equal(1);
+        it('should have created instances', () => {
+            expect(vocabulary.instances.count()).to.equal(4);
+            expect(vocabulary.hasInstance('Person/persons/johnd')).to.be.true;
+            expect(vocabulary.hasInstance('Person/persons/janed')).to.be.true;
+            expect(vocabulary.hasInstance('Person/persons/jilld')).to.be.true;
+        });
+
+        it('should have correct type references', () => {
+            expect(vocabulary.getInstance('Person/persons/johnd').isInstanceOf('Person')).to.be.true;
+            expect(vocabulary.getInstance('Person/persons/janed').isInstanceOf('Employee')).to.be.true;
+            expect(vocabulary.getInstance('Person/persons/jilld').isInstanceOf('Manager')).to.be.true;
+            expect(vocabulary.getInstance('Person/persons/jaked').isInstanceOf('Employee')).to.be.true;
+            expect(vocabulary.getInstance('Person/persons/jaked').isInstanceOf('Manager')).to.be.true;
+        });
+
+        it('should allow enumerating properties', () => {
+            const instance = vocabulary.getInstance('Person/persons/johnd');
+            expect(instance.properties.count()).to.be.equal(2);
+            expect(instance.getProperty('Person/firstName')).to.be.ok;
+            expect(instance.getProperty('Person/lastName')).to.be.ok;
+        });
+
+        it('should allow setting primitive property values', () => {
+            const instance = vocabulary.getInstance('Person/persons/johnd');
+            instance.getProperty('Person/firstName').value = 'John';
+            instance.getProperty('Person/lastName').value = 'Doe';
+
+            expect(instance.getProperty('Person/firstName').value).to.equal('John');
+            expect(instance.getProperty('Person/lastName').value).to.equal('Doe');
+        });
+
+        it('should allow setting reference property values', () => {
+            const instance = vocabulary.getInstance('Person/persons/janed');
+            instance.getProperty('Employee/managedBy').value = vocabulary.getInstance('Person/persons/jilld');
+            expect(instance.getProperty('Employee/managedBy').value).to.be.ok;
+            expect(instance.getProperty('Employee/managedBy').value).instanceOf(Instance);
+            expect(instance.getProperty('Employee/managedBy').value.id).to.equal('Person/persons/jilld');
+            expect(vocabulary.getInstance('Person/persons/jilld').getReferrers('Employee/managedBy').count()).to.be.equal(1);
+        });
+
+        it('should allow overriding reference property value', () => {
+            const instance = vocabulary.getInstance('Person/persons/janed');
+
+            instance.getProperty('Employee/managedBy').value = vocabulary.getInstance('Person/persons/jilld');
+            expect(instance.getProperty('Employee/managedBy').value.id).to.equal('Person/persons/jilld');
+            expect(vocabulary.getInstance('Person/persons/jilld').getReferrers('Employee/managedBy').count()).to.be.equal(1);
+
+            instance.getProperty('Employee/managedBy').value = vocabulary.getInstance('Person/persons/jaked');
+            expect(instance.getProperty('Employee/managedBy').value.id).to.equal('Person/persons/jaked');
+            expect(vocabulary.getInstance('Person/persons/jilld').getReferrers('Employee/managedBy').count()).to.be.equal(0);
+            expect(vocabulary.getInstance('Person/persons/jaked').getReferrers('Employee/managedBy').count()).to.be.equal(1);
+        });
+
+        it('should throw when attempting to set value for container property', () => {
+            const instance = vocabulary.getInstance('Person/persons/jaked');
+            expect(() => instance.getProperty('Manager/manages').value = vocabulary.getInstance('Person/persons/janed')).to.throw(Errors.InstancePropertyValueError);
+        });
+
+        it('should throw when attempting to add value for a non-contianer property', () => {
+            const instance = vocabulary.getInstance('Person/persons/janed');
+            expect(() => instance.getProperty('Employee/managedBy').addValue(vocabulary.getInstance('Person/persons/jaked'))).to.throw(Errors.InstancePropertyValueError);
+        });
+
+        it('should throw when attempting to remove value for a non-contianer property', () => {
+            const instance = vocabulary.getInstance('Person/persons/janed');
+            expect(() => instance.getProperty('Employee/managedBy').removeValue(vocabulary.getInstance('Person/persons/jaked'))).to.throw(Errors.InstancePropertyValueError);
+        });
+
+        it('should throw when attempting to clear values for a non-contianer property', () => {
+            const instance = vocabulary.getInstance('Person/persons/janed');
+            expect(() => instance.getProperty('Employee/managedBy').clearValues()).to.throw(Errors.InstancePropertyValueError);
+        });
+
+        it('should allow adding values to container properties', () => {
+            const instance = vocabulary.getInstance('Person/persons/jaked');
+            instance.getProperty('Manager/manages').addValue(vocabulary.getInstance('Person/persons/janed'));
+            instance.getProperty('Manager/manages').addValue(vocabulary.getInstance('Person/persons/jilld'));
+
+            expect(instance.getProperty('Manager/manages').value.length).to.equal(2);
+            expect(instance.getProperty('Manager/manages').value.some((x: any) => x.id === 'Person/persons/janed')).to.be.true;
+            expect(instance.getProperty('Manager/manages').value.some((x: any) => x.id === 'Person/persons/jilld')).to.be.true;
+        });
+
+        it('should allow removing values from container properties', () => {
+            const instance = vocabulary.getInstance('Person/persons/jaked');
+            instance.getProperty('Manager/manages').addValue(vocabulary.getInstance('Person/persons/janed'));
+            instance.getProperty('Manager/manages').addValue(vocabulary.getInstance('Person/persons/jilld'));
+
+            expect(instance.getProperty('Manager/manages').value.length).to.equal(2);
+
+            instance.getProperty('Manager/manages').removeValue('Person/persons/jilld');
+            expect(instance.getProperty('Manager/manages').value.length).to.equal(1);
+            expect(instance.getProperty('Manager/manages').value.some((x: any) => x.id === 'Person/persons/janed')).to.be.true;
+            expect(instance.getProperty('Manager/manages').value.some((x: any) => x.id === 'Person/persons/jilld')).to.be.false;
+        });
+
+        it('should allow clearing values from container properties', () => {
+            const instance = vocabulary.getInstance('Person/persons/jaked');
+            instance.getProperty('Manager/manages').addValue(vocabulary.getInstance('Person/persons/janed'));
+            instance.getProperty('Manager/manages').addValue(vocabulary.getInstance('Person/persons/jilld'));
+
+            expect(instance.getProperty('Manager/manages').value.length).to.equal(2);
+
+            instance.getProperty('Manager/manages').clearValues();
+            expect(instance.getProperty('Manager/manages').value.length).to.equal(0);
         });
     });
 });

@@ -13,6 +13,10 @@ import DataType from './dataType';
 import Instance from './instance';
 import Resource from './resource';
 
+type ClassType = string | Class;
+type PropertyType = string | Property;
+type ResourceType = string | Resource;
+
 /**
  * @description RDF based vocabulary.
  * @export
@@ -172,32 +176,39 @@ export class Vocabulary implements types.Vocabulary {
      * @description Creates a new instance in the vocabulary.
      * @template T The instance type.
      * @param {string} id The id of the instance to create.
-     * @param {(string | Class)} classType The initial class type of the instance.
+     * @param {(string | Class)} classTypes The initial class type of the instance.
      * @returns {(Instance & T)}
      * @memberof Vocabulary
      */
-    createInstance<T = {}>(id: string, classType: string | Class): Instance & T {
+    createInstance<T = {}>(id: string, ...classTypes: ClassType[]): Instance & T {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        if (!classType) {
-            throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
+        if (!classTypes) {
+            throw new ReferenceError(`Invalid classType. classType is '${classTypes}'`);
         }
 
-        let classRef: Class;
-        if (typeof classType === 'string') {
-            classRef = this.getClass(classType);
-            if (!classRef) {
-                throw new Errors.ResourceNotFoundError(classType, 'Class');
+        const classRefs: Class[] = [];
+        for (const classType of classTypes) {
+            let classRef: Class;
+            if (typeof classType === 'string') {
+                classRef = this.getClass(classType);
+                if (!classRef) {
+                    throw new Errors.ResourceNotFoundError(classType, 'Class');
+                }
+            } else {
+                classRef = classType;
             }
-        } else {
-            classRef = classType;
+
+            classRefs.push(classRef);
         }
 
-        const instanceV = this.graph.createVertex(id);
+        const instanceV = this.graph.createVertex(Id.expand(id));
         const instance = new Instance(instanceV, this);
-        instance.setClass(classRef);
+        for (const classRef of classRefs) {
+            instance.setClass(classRef);
+        }
 
         return InstanceProxy.proxify<T>(instance);
     }
@@ -372,7 +383,7 @@ export class Vocabulary implements types.Vocabulary {
      * @param {boolean} [deleteOwnedProps] True to delete all class owned properties, else false.
      * @memberof Vocabulary
      */
-    removeClass(classType: string | Class, deleteOwnedProps: boolean = true): void {
+    removeClass(classType: ClassType, deleteOwnedProps: boolean = true): void {
         if (!classType) {
             throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
         }
@@ -395,7 +406,7 @@ export class Vocabulary implements types.Vocabulary {
      * @param {(string | Property)} property The property id or property instance to remove.
      * @memberof Vocabulary
      */
-    removeProperty(property: string | Property): void {
+    removeProperty(property: PropertyType): void {
         if (!property) {
             throw new ReferenceError(`Invalid property. property is '${property}'`);
         }
@@ -413,7 +424,7 @@ export class Vocabulary implements types.Vocabulary {
      * @param {(string | Resource)} resource The resource id or resource instance to remove.
      * @memberof Vocabulary
      */
-    removeResource(resource: string | Resource): void {
+    removeResource(resource: ResourceType): void {
         if (!resource) {
             throw new ReferenceError(`Invalid resource. resource is '${resource}`);
         }
