@@ -1,0 +1,12 @@
+/node_modules/
+/src/
+/coverage/
+/.nyc_output/
+/*.tgz
+/tsconfig.json
+/tslint.json
+/wallaby.js
+/src/
+/sample/
+/test/
+/types/
