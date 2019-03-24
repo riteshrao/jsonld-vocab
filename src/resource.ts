@@ -107,6 +107,26 @@ export abstract class Resource {
     }
 
     /**
+     * @description Gets the resource type.
+     * @readonly
+     * @type {string}
+     * @memberof Resource
+     */
+    get type(): string {
+        return this.vertex.types.map(x => x.id).first();
+    }
+
+    /**
+     * @description Checks if a resource is of a specified type.
+     * @param {string} type The type id to check.
+     * @returns {boolean}
+     * @memberof Resource
+     */
+    isType(type: string): boolean {
+        return this.vertex.isType(type);
+    }
+
+    /**
      * @description Gets the context term definition associated with this resource.
      * @protected
      * @returns {ContextTerm}

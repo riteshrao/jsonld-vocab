@@ -105,6 +105,24 @@ export namespace Errors {
     }
 
     /**
+     * @description Error thrown when an expected property on an instance is not found
+     * @export
+     * @class InstancePropertyNotFoundError
+     * @extends {VocabularyError}
+     */
+    export class InstancePropertyNotFoundError extends VocabularyError {
+        /**
+         * Creates an instance of InstancePropertyNotFoundError.
+         * @param {string} instanceId The id of the instance that generated the error.
+         * @param {string} propertyId The id of the property that was not found.
+         * @memberof InstancePropertyNotFoundError
+         */
+        constructor(public readonly instanceId: string, public readonly propertyId: string) {
+            super(`Property ${propertyId} not found on instance ${instanceId}`);
+        }
+    }
+
+    /**
      * @description Error thrown when a value error occurs for an instance property.
      * @export
      * @class InstancePropertyValueError

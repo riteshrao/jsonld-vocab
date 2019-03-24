@@ -1,14 +1,16 @@
 import Iterable from 'jsiterable';
+import LibIterable from 'jsiterable/lib/types';
 import { Vertex } from 'jsonld-graph';
 import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
 
-import { ValueType, ContainerType } from './context';
+import * as types from './types';
+
 import Errors from './errors';
 import Class from './class';
 import Id from './id';
 import InstanceProxy from './instanceProxy';
 import Property from './property';
-import Vocabulary from './types';
+import { ValueType, ContainerType } from './context';
 
 /**
  * @description Represents an vocabulary class instance.
@@ -24,7 +26,7 @@ export class Instance {
      */
     constructor(
         private readonly vertex: Vertex,
-        private readonly vocabulary: Vocabulary) {
+        public readonly vocabulary: types.Vocabulary) {
 
         if (!vertex) {
             throw new ReferenceError(`Invalid vertex. vertex is ${vertex}`);
@@ -164,8 +166,21 @@ export class Instance {
             throw new Errors.InstanceClassRequiredError(this.id);
         }
 
-        const classId = typeof classType === 'string' ? Id.expand(classType) : Id.expand(classType.id);
-        this.vertex.removeType(classId);
+        const classReference = typeof classType === 'string' ? this.vocabulary.getClass(classType) : classType;
+        if (!classReference.isType('rdfs:Class')) {
+            throw new Errors.ResourceTypeMismatchError(classReference.id, 'Class', classReference.type);
+        }
+
+        // Remove all property values and outgoing references for class properties.
+        for (const property of classReference.ownProperties) {
+            if (property.valueType === ValueType.id || property.valueType === ValueType.vocab) {
+                this.vertex.removeOutgoing(Id.expand(property.id));
+            } else {
+                this.vertex.deleteAttribute(Id.expand(property.id));
+            }
+        }
+
+        this.vertex.removeType(Id.expand(classReference.id));
         return this;
     }
 
@@ -212,11 +227,16 @@ export class Instance {
     }
 }
 
+/**
+ * @description Property of an instance.
+ * @export
+ * @class InstanceProperty
+ */
 export class InstanceProperty {
     constructor(
         private readonly vertex: Vertex,
         private readonly property: Property,
-        private readonly vocabulary: Vocabulary) {
+        private readonly vocabulary: types.Vocabulary) {
 
         if (!vertex) {
             throw new ReferenceError(`Invalid vertex. veretx is '${vertex}'`);
@@ -284,27 +304,29 @@ export class InstanceProperty {
      * @memberof InstanceProperty
      */
     get value(): any {
-        switch (this.valueType) {
-            case (ValueType.id): {
-                const vertices = [...this.vertex.getOutgoing(Id.expand(this.property.id)).map(x => x.toVertex)];
-                if (!vertices || vertices.length === 0) {
-                    return [];
-                }
+        if (this.container) {
+            return new ContainerPropertyValues(this.vertex, this.property, this.vocabulary);
+        } else {
+            switch (this.valueType) {
+                case (ValueType.id): {
+                    const outgoingInstance = this.vertex.getOutgoing(Id.expand(this.property.id)).first();
+                    if (!outgoingInstance) {
+                        return undefined;
+                    }
 
-                const instances = vertices.map(vertex => InstanceProxy.proxify(new Instance(vertex, this.vocabulary)));
-                return this.container ? instances : instances[0];
-            }
-            case (ValueType.vocab): {
-                const vertices = [...this.vertex.getOutgoing(Id.expand(this.property.id))].map(x => x.toVertex);
-                if (!vertices || vertices.length === 0) {
-                    return [];
+                    return InstanceProxy.proxify(new Instance(outgoingInstance.toVertex, this.vocabulary));
                 }
+                case (ValueType.vocab): {
+                    const outgoingInstance = this.vertex.getOutgoing(Id.expand(this.property.id)).first();
+                    if (!outgoingInstance) {
+                        return undefined;
+                    }
 
-                const instances = vertices.map(vertex => this.vocabulary.getInstance(vertex.id));
-                return this.container ? instances : instances[0];
-            }
-            default: {
-                return this.vertex.getAttributeValue(Id.expand(this.property.id));
+                    return this.vocabulary.getInstance(outgoingInstance.toVertex.id);
+                }
+                default: {
+                    return this.vertex.getAttributeValue(Id.expand(this.property.id));
+                }
             }
         }
     }
@@ -318,7 +340,7 @@ export class InstanceProperty {
             throw new Errors.InstancePropertyValueError(
                 Id.compact(this.vertex.id),
                 this.property.id,
-                'Value setter for container properties cannot be used. Use addValue / removeValue methods instead.');
+                'Value setter for container properties cannot be used. Use add/remove value methods instead.');
         }
 
         switch (this.valueType) {
@@ -344,25 +366,93 @@ export class InstanceProperty {
             }
         }
     }
+}
+
+/**
+ * @description Container property values.
+ * @export
+ * @class ContainerPropertyValues
+ */
+export class ContainerPropertyValues<T = any> implements LibIterable<T> {
+    /**
+     * Creates an instance of InstancePropertyContainer.
+     * @param {Vertex} vertex The instance vertex.
+     * @param {Property} property The container property.
+     * @param {Vocabulary} vocabulary Reference to the vocabulary.
+     * @memberof ContainerPropertyValues
+     */
+    constructor(
+        private readonly vertex: Vertex,
+        private readonly property: Property,
+        private readonly vocabulary: types.Vocabulary) {
+    }
+
+    *[Symbol.iterator](): Iterator<any> {
+        switch (this.property.valueType) {
+            case (ValueType.id): {
+                const instances = this.vertex
+                    .getOutgoing(Id.expand(this.property.id))
+                    .map(outgoing => InstanceProxy.proxify(new Instance(outgoing.toVertex, this.vocabulary)));
+
+                for (const instance of instances) {
+                    yield instance;
+                }
+            }
+            case (ValueType.vocab): {
+                const instances = this.vertex
+                    .getOutgoing(Id.expand(this.property.id))
+                    .map(outgoing => this.vocabulary.getInstance(outgoing.toVertex.id));
+
+                for (const instance of instances) {
+                    yield instance;
+                }
+            }
+            default: {
+                const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
+                if (values instanceof Array) {
+                    for (const value of values) {
+                        yield value;
+                    }
+                } else {
+                    return values;
+                }
+            }
+        }
+    }
 
     /**
-     * @description Adds a value to a container property.
-     * @param {*} value The value to add to the container property.
-     * @memberof InstanceProperty
+     * @description Gets the count of items in the container.
+     * @readonly
+     * @memberof ContainerPropertyValues
      */
-    addValue(value: any): void {
+    get count(): number {
+        switch (this.property.valueType) {
+            case (ValueType.id):
+            case (ValueType.vocab): {
+                return this.vertex.getOutgoing(Id.expand(this.property.id)).count();
+            }
+            default: {
+                const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
+                if (!values) {
+                    return 0;
+                } else {
+                    return values instanceof Array ? values.length : 1;
+                }
+            }
+        }
+    }
+
+    /**
+     * @description Adds a value to the container property.
+     * @param {*} value The value to add to the container property
+     * @memberof ContainerPropertyValues
+     */
+    add(value: T): void {
         if (value === null || value === undefined) {
             throw new ReferenceError(`Invalid value. value is ${value}`);
         }
 
-        if (!this.container) {
-            throw new Errors.InstancePropertyValueError(
-                Id.expand(this.vertex.id),
-                this.property.id,
-                'Cannot use add/remove/clear value methods for non-container properties. Use the value setter instead');
-        }
-
-        if (this.valueType === ValueType.id || this.valueType === ValueType.vocab) {
+        if (this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) {
             const referenceId = value instanceof Instance ? Id.expand(value.id) : '' + value;
             this.vertex.setOutgoing(Id.expand(this.property.id), referenceId, false);
         } else {
@@ -371,43 +461,29 @@ export class InstanceProperty {
     }
 
     /**
-     * @description Removes a value from a container property.
-     * @param {*} value The value to remove.
-     * @memberof InstanceProperty
+     * @description Removes a value from the container property.
+     * @param {any} value The value to remove.
+     * @memberof ContainerPropertyValues
      */
-    removeValue(value: any): void {
+    remove(value: any): void {
         if (value === null || value === undefined) {
             throw new ReferenceError(`Invalid value. value is ${value}`);
         }
 
-        if (!this.container) {
-            throw new Errors.InstancePropertyValueError(
-                Id.expand(this.vertex.id),
-                this.property.id,
-                'Cannot use add/remove/clear value methods for non-container properties. Use the value setter instead');
-        }
-
-        if (this.valueType === ValueType.id || this.valueType === ValueType.vocab) {
+        if (this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) {
             const referenceId = value instanceof Instance ? Id.expand(value.id) : Id.expand('' + value);
             this.vertex.removeOutgoing(Id.expand(this.property.id), referenceId);
         } else {
-            throw new Error('Method not implemented');
+            this.vertex.removeAttributeValue(Id.expand(this.property.id), value);
         }
     }
 
     /**
-     * @description Clears all values in a container property.
-     * @memberof InstanceProperty
+     * @description Clears the container property.
+     * @memberof ContainerPropertyValues
      */
-    clearValues(): void {
-        if (!this.container) {
-            throw new Errors.InstancePropertyValueError(
-                Id.expand(this.vertex.id),
-                this.property.id,
-                'Cannot use add/remove/clear value methods for non-container properties. Use the value setter instead');
-        }
-
-        if (this.valueType === ValueType.id || this.valueType === ValueType.vocab) {
+    clear(): void {
+        if (this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) {
             this.vertex.removeOutgoing(Id.expand(this.property.id));
         } else {
             this.vertex.deleteAttribute(Id.expand(this.property.id));

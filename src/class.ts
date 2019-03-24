@@ -5,7 +5,7 @@ import Id from './id';
 import Property from './property';
 import Resource from './resource';
 import Errors from './errors';
-import Vocabulary from './types';
+import Vocabulary, { PropertyReference, ClassReference } from './types';
 
 /**
  * @description Class resource
@@ -189,7 +189,7 @@ export class Class extends Resource {
      * @returns {boolean} True if this class or any of its ancestors have the specified property.
      * @memberof Class
      */
-    hasProperty(property: string | Property): boolean {
+    hasProperty(property: PropertyReference): boolean {
         if (!property) {
             throw new ReferenceError(`Invalid property`);
         }
@@ -204,7 +204,7 @@ export class Class extends Resource {
      * @returns {boolean} True if the class has the specified property, else false.
      * @memberof Class
      */
-    hasOwnProperty(property: string | Property): boolean {
+    hasOwnProperty(property: PropertyReference): boolean {
         if (!property) {
             throw new ReferenceError(`Invalid property. property is '${property}'`);
         }
@@ -222,7 +222,7 @@ export class Class extends Resource {
      * @returns {boolean} True if the class is an ancestor ot the specified type.
      * @memberof Class
      */
-    isAncestorOf(classType: string | Class): boolean {
+    isAncestorOf(classType: ClassReference): boolean {
         if (!classType) {
             throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
         }
@@ -237,7 +237,7 @@ export class Class extends Resource {
      * @returns {boolean}
      * @memberof Class
      */
-    isDescendantOf(classType: string | Class): boolean {
+    isDescendantOf(classType: ClassReference): boolean {
         if (!classType) {
             throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
         }
@@ -252,7 +252,7 @@ export class Class extends Resource {
      * @returns {boolean} True if this class is a sub-class of the specified type, else false.
      * @memberof Class
      */
-    isSubClassOf(classType: string | Class): boolean {
+    isSubClassOf(classType: ClassReference): boolean {
         if (!classType) {
             throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
         }
@@ -268,7 +268,7 @@ export class Class extends Resource {
      * @param {(string | Class)} classType The class id or class reference to make this a class a sub-class of.
      * @memberof Class
      */
-    makeSubClassOf(classType: string | Class): this {
+    makeSubClassOf(classType: ClassReference): this {
         if (!classType) {
             throw new ReferenceError(`Invalid classType. classType is ${classType}`);
         }
@@ -284,7 +284,7 @@ export class Class extends Resource {
      * @param {boolean} [deleteOwned=false] True to remove the property from the vocabulary if the property is owned and not shared by other classes.
      * @memberof Class
      */
-    removeProperty(property: string | Property, deleteOwned: boolean = false): this {
+    removeProperty(property: PropertyReference, deleteOwned: boolean = false): this {
         if (!property) {
             throw new ReferenceError(`Invalid property. property is '${property}'`);
         }
@@ -303,7 +303,7 @@ export class Class extends Resource {
      * @param {(string | Class)} classType The class id or class reference to remove this class as a sub-class of.
      * @memberof Class
      */
-    removeSubClassOf(classType: string | Class): this {
+    removeSubClassOf(classType: ClassReference): this {
         if (!classType) {
             throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
         }

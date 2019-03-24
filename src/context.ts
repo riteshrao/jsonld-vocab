@@ -1,7 +1,8 @@
 import Iterable from 'jsiterable';
-import Id from './id';
-import Errors from './errors';
 import { JsonldKeywords } from 'jsonld-graph';
+
+import Errors from './errors';
+import Id from './id';
 
 /**
  * @description The value type of a term in the context.
