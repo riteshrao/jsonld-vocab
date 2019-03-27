@@ -61,11 +61,14 @@ export class ContextTerm {
 
 export class Context {
 
+    // TODO: Context cache re-constitution based on term changes.
+
     static readonly RdfNamespace = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
     static readonly RdfsNamespace = 'http://www.w3.org/2000/01/rdf-schema#';
     static readonly XSDNamesapce = 'http://www.w3.org/2001/XMLSchema#';
 
     private readonly _terms: Map<string, ContextTerm> = new Map<string, ContextTerm>();
+    private readonly _cache: Map<string, object> = new Map<string, object>();
 
     /**
      * Creates an instance of Context.
@@ -86,6 +89,16 @@ export class Context {
      */
     get terms(): Iterable<[string, ContextTerm]> {
         return new Iterable(this._terms);
+    }
+
+    /**
+     * @description Gets all the context definitions.
+     * @readonly
+     * @type {Iterable<[string, object]>}
+     * @memberof Context
+     */
+    get definitions(): Iterable<[string, object]> {
+        return new Iterable(this._cache);
     }
 
     /**
@@ -153,12 +166,21 @@ export class Context {
 
     /**
      * @description Loads a context document.
-     * @param {*} document The context document to parse.
+     * @param {string} uri The uri of the context to load.
+     * @param {object} document The context document to parse.
      * @memberof Context
      */
-    load(document: any) {
+    load(uri: string, document: object) {
+        if (!uri) {
+            throw new ReferenceError(`Invalid uri. uri is '${uri}'`);
+        }
+
         if (!document) {
             throw new ReferenceError(`Invalid document. document is '${document}'`);
+        }
+
+        if (this._cache.has(uri)) {
+            throw new Errors.DuplicateContextError(uri);
         }
 
         if (!document[JsonldKeywords.context]) {
@@ -166,20 +188,13 @@ export class Context {
         }
 
         const context = document[JsonldKeywords.context];
-        if (context['@vocab'] && context['@vocab'] !== this.baseIri) {
-            throw new Errors.ContextSyntaxError(`Context '@vocab' IRI ${context['@vocab']} does not match vocabulary base ${this.baseIri}`);
+        if (context instanceof Array) {
+            context.filter(x => typeof x === 'string').forEach(item => this._parseContextObject(item));
+        } else {
+            this._parseContextObject(context);
         }
 
-        for (const term of Object.getOwnPropertyNames(context).filter(x => !x.startsWith('@'))) {
-            const value = typeof context[term] === 'string' ? { [JsonldKeywords.id]: context[term] } : context[term];
-            if (!value[JsonldKeywords.id]) {
-                throw new Errors.ContextSyntaxError(`Invalid context term ${term}. ${JsonldKeywords.id} not specified for term`);
-            }
-
-            const definition = this.isDefined(term) ? this.getTerm(term) : this.setTerm(term, value[JsonldKeywords.id]);
-            definition.container = value['@container'];
-            definition.type = value[JsonldKeywords.type];
-        }
+        this._cache.set(uri, document);
     }
 
     /**
@@ -208,11 +223,28 @@ export class Context {
         const compactId = Id.compact(id);
         for (const [term, definition] of this._terms.entries()) {
             if (definition.id === compactId) {
-                return { term,  definition };
+                return { term, definition };
             }
         }
 
         return undefined;
+    }
+
+    private _parseContextObject(context: any) {
+        if (context['@vocab'] && context['@vocab'] !== this.baseIri) {
+            throw new Errors.ContextSyntaxError(`Context '@vocab' IRI ${context['@vocab']} does not match vocabulary base ${this.baseIri}`);
+        }
+
+        for (const term of Object.getOwnPropertyNames(context).filter(x => !x.startsWith('@'))) {
+            const value = typeof context[term] === 'string' ? { [JsonldKeywords.id]: context[term] } : context[term];
+            if (!value[JsonldKeywords.id]) {
+                throw new Errors.ContextSyntaxError(`Invalid context term ${term}. ${JsonldKeywords.id} not specified for term`);
+            }
+
+            const definition = this.isDefined(term) ? this.getTerm(term) : this.setTerm(term, value[JsonldKeywords.id]);
+            definition.container = value['@container'];
+            definition.type = value[JsonldKeywords.type];
+        }
     }
 }
 

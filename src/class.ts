@@ -34,7 +34,7 @@ export class Class extends Resource {
     get ancestors(): Iterable<Class> {
         const _that = this;
         return new Iterable<Class>((function* classAncestors() {
-            for (const parent of _that.subClassOf) {
+            for (const parent of _that.parentClasses) {
                 for (const ancestor of parent.ancestors) {
                     yield ancestor;
                 }
@@ -87,7 +87,7 @@ export class Class extends Resource {
                 yield ownProperty;
             }
 
-            for (const parent of _that.subClassOf) {
+            for (const parent of _that.parentClasses) {
                 for (const parentProp of parent.properties) {
                     yield parentProp;
                 }
@@ -108,15 +108,21 @@ export class Class extends Resource {
     }
 
     /**
-     * @description Gets all classes this class is a sub-class of.
+     * @description Gets all parent classes this class is a sub-class of.
      * @readonly
      * @type {Iterable<Class>}
      * @memberof Class
      */
-    get subClassOf(): Iterable<Class> {
-        return this.vertex
-            .getOutgoing('rdfs:subClassOf')
-            .map(edge => new Class(edge.toVertex, this.vocabulary));
+    get parentClasses(): Iterable<Class> {
+        const _that = this;
+        return new Iterable<Class>(function* parentClasses() {
+            const visisted = new Set<string>();
+            for (const { toVertex } of _that.vertex.getOutgoing('rdfs:subClassOf')) {
+                if (!visisted.has(toVertex.id)) {
+                    yield new Class(toVertex, _that.vocabulary);
+                }
+            }
+        }());
     }
 
     /**
@@ -130,7 +136,7 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid property. property is ${property}`);
         }
 
-        if (this.hasOwnProperty(property.id)) {
+        if (this.hasProperty(property.id)) {
             return;
         }
 
@@ -218,16 +224,16 @@ export class Class extends Resource {
 
     /**
      * @description Checks if this class is an ancestor of another type.
-     * @param {(string | Class)} classType The class type to check if this class is an ancestor of.
+     * @param {(string | Class)} classReference The class type to check if this class is an ancestor of.
      * @returns {boolean} True if the class is an ancestor ot the specified type.
      * @memberof Class
      */
-    isAncestorOf(classType: ClassReference): boolean {
-        if (!classType) {
-            throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
+    isAncestorOf(classReference: ClassReference): boolean {
+        if (!classReference) {
+            throw new ReferenceError(`Invalid classReference. classREference is '${classReference}'`);
         }
 
-        const classId = typeof classType === 'string' ? classType : classType.id;
+        const classId = typeof classReference === 'string' ? classReference : classReference.id;
         return this.descendants.some(x => x.id === classId);
     }
 
@@ -242,8 +248,8 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
         }
 
-        const classId = typeof classType === 'string' ? classType : classType.id;
-        return this.ancestors.some(x => x.id === classId);
+        const classId = typeof classType === 'string' ? Id.expand(classType) : Id.expand(classType.id);
+        return this.ancestors.some(x => Id.expand(x.id) === classId);
     }
 
     /**
@@ -265,31 +271,39 @@ export class Class extends Resource {
 
     /**
      * @description Makes this class a sub-class of another class type.
-     * @param {(string | Class)} classType The class id or class reference to make this a class a sub-class of.
+     * @param {(string | Class)} classReference The class id or class reference to make this a class a sub-class of.
      * @memberof Class
      */
-    makeSubClassOf(classType: ClassReference): this {
-        if (!classType) {
-            throw new ReferenceError(`Invalid classType. classType is ${classType}`);
+    makeSubClassOf(classReference: ClassReference): this {
+        if (!classReference) {
+            throw new ReferenceError(`Invalid classReference. classReference is ${classReference}`);
         }
 
-        const classId = typeof classType === 'string' ? Id.expand(classType, true) : Id.expand(classType.id);
-        this.vertex.setOutgoing('rdfs:subClassOf', classId, false);
+        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        if (!classType) {
+            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+        }
+
+        this.vertex.setOutgoing('rdfs:subClassOf', Id.expand(classType.id), false);
         return this;
     }
 
     /**
      * @description Removes a property from the class.
-     * @param {(string | Property)} property The property id or reference to remove.
+     * @param {(string | Property)} propertyReference The property id or reference to remove.
      * @param {boolean} [deleteOwned=false] True to remove the property from the vocabulary if the property is owned and not shared by other classes.
      * @memberof Class
      */
-    removeProperty(property: PropertyReference, deleteOwned: boolean = false): this {
-        if (!property) {
-            throw new ReferenceError(`Invalid property. property is '${property}'`);
+    removeProperty(propertyReference: PropertyReference, deleteOwned: boolean = false): this {
+        if (!propertyReference) {
+            throw new ReferenceError(`Invalid property. property is '${propertyReference}'`);
         }
 
-        const propertyRef = property instanceof Property ? property : this.getProperty(property);
+        const propertyRef = typeof propertyReference === 'string' ? this.getProperty(propertyReference) : propertyReference;
+        if (!propertyRef) {
+            throw new Errors.ResourceNotFoundError(propertyReference as string, 'Property');
+        }
+
         propertyRef.removeDomain(this);
         if (propertyRef.domains.count() === 0 && deleteOwned) {
             this.vocabulary.removeResource(propertyRef);
@@ -300,16 +314,20 @@ export class Class extends Resource {
 
     /**
      * @description Removes a sub-class reference from this class.
-     * @param {(string | Class)} classType The class id or class reference to remove this class as a sub-class of.
+     * @param {(string | Class)} classReference The class id or class reference to remove this class as a sub-class of.
      * @memberof Class
      */
-    removeSubClassOf(classType: ClassReference): this {
-        if (!classType) {
-            throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
+    removeSubClassOf(classReference: ClassReference): this {
+        if (!classReference) {
+            throw new ReferenceError(`Invalid classReference. classReference is '${classReference}'`);
         }
 
-        const classId = typeof classType === 'string' ? Id.expand(classType, true) : Id.expand(classType.id);
-        this.vertex.removeOutgoing('rdfs:subClassOf', classId);
+        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        if (!classType) {
+            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+        }
+
+        this.vertex.removeOutgoing('rdfs:subClassOf', Id.expand(classType.id));
         return this;
     }
 

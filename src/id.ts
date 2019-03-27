@@ -58,7 +58,7 @@ export namespace Id {
         }
 
         if (!resourceIdPattern.test(id)) {
-            throw new Errors.InvalidResourceId(id);
+            throw new Errors.InvalidResourceIdError(id);
         }
     }
 }

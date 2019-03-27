@@ -1,0 +1,156 @@
+{
+    "@context": {
+        "@base": "http://example.org/classes/"
+    },
+    "@graph": [
+        {
+            "@id": "Location",
+            "@type": "Class",
+            "label": "Location",
+            "comment": "Location"
+        },
+        {
+            "@id": "Location/address",
+            "@type": "Property",
+            "label": "Address",
+            "comment": "Location address",
+            "domain": "Location",
+            "range": "xsd:string"
+        },
+        {
+            "@id": "Person",
+            "@type": "Class",
+            "label": "Person",
+            "comment": "Person class"
+        },
+        {
+            "@id": "Person/firstName",
+            "@type": "Property",
+            "label": "First Name",
+            "comment": "Person first name",
+            "domain": "Person",
+            "range": "xsd:string"
+        },
+        {
+            "@id": "Person/lastName",
+            "@type": "Property",
+            "label": "Last Name",
+            "comment": "Person last name",
+            "domain": "Person",
+            "range": "xsd:string"
+        },
+        {
+            "@id": "Person/location",
+            "@type": "Property",
+            "label": "Location",
+            "comment": "Person location",
+            "domain": "Person",
+            "range": "Location"
+        },
+        {
+            "@id": "Department",
+            "@type": "Class",
+            "label": "Department",
+            "comment": "Department"
+        },
+        {
+            "@id": "Department/name",
+            "@type": "Property",
+            "label": "Name",
+            "comment": "Department Name",
+            "domain": "Department",
+            "range": "xsd:string"
+        },
+        {
+            "@id": "Department/location",
+            "@type": "Property",
+            "label": "Location",
+            "comment": "Department location",
+            "domain": "Department",
+            "range": "Location"
+        },
+        {
+            "@id": "Department/phoneNo",
+            "@type": "Property",
+            "label": "Phone No(s)",
+            "comment": "Department phone nos",
+            "domain": "Department",
+            "range": "xsd:string"
+        },
+        {
+            "@id": "Employee",
+            "@type": "Class",
+            "subClassOf": "Person",
+            "label": "Employee",
+            "comment": "Employee class"
+        },
+        {
+            "@id": "Employee/level",
+            "@type": "Property",
+            "label": "Level",
+            "comment": "Employee level",
+            "domain": "Employee",
+            "range": "xsd:integer"
+        },
+        {
+            "@id": "Employee/manager",
+            "@type": "Property",
+            "label": "Manager",
+            "comment": "Employee manager",
+            "domain": "Employee",
+            "range": "Employee"
+        },
+        {
+            "@id": "Employee/department",
+            "@type": "Property",
+            "label": "Department",
+            "comment": "The department the employee belongs to",
+            "domain": "Employee",
+            "range": "Department"
+        },
+        {
+            "@id": "Manager",
+            "@type": "Class",
+            "subClassOf": "Employee",
+            "label": "Manager",
+            "comment": "Manager class"
+        },
+        {
+            "@id": "Manager/manages",
+            "@type": "Property",
+            "label": "Manages",
+            "comment": "Employees that the manager manages",
+            "domain": "Manager",
+            "range": "Employee"
+        },
+        {
+            "@id": "Contractor",
+            "@type": "Class",
+            "subClassOf": "Person",
+            "label": "Contractor",
+            "comment": "Contractor class"
+        },
+        {
+            "@id": "Contractor/company",
+            "@type": "Property",
+            "label": "Contractor Company",
+            "domain": "Contractor",
+            "range": "xsd:string"
+        },
+        {
+            "@id": "Department/deptA",
+            "@type": "Department",
+            "name": "Department A"
+        },
+        {
+            "@id": "Department/deptB",
+            "@type": "Department",
+            "name": "Department A"
+        },
+        {
+            "@id": "Department/deptC",
+            "@type": "Department",
+            "name": "Department A"
+        }
+    ]
+}

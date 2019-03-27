@@ -74,7 +74,7 @@ export class Instance {
      * @memberof Instance
      */
     get classes(): Iterable<Class> {
-        return this.vertex.types.map(typeV => new Class(typeV, this.vocabulary));
+        return this.vertex.types.map(typeV => this.vocabulary.getClass(typeV.id));
     }
 
     /**
@@ -84,10 +84,30 @@ export class Instance {
      * @memberof Instance
      */
     get properties(): Iterable<InstanceProperty> {
-        return this.classes
-            .mapMany((classType) => classType
-                .properties
-                .map(property => new InstanceProperty(this.vertex, property, this.vocabulary)));
+        const _that = this;
+        return new Iterable((function* getInstanceProperties() {
+            const tracker = new Set<string>();
+            for (const classType of _that.classes) {
+                for (const property of classType.properties) {
+                    if (!tracker.has(property.id)) {
+                        tracker.add(property.id);
+                        yield new InstanceProperty(_that.vertex, property, _that.vocabulary);
+                    }
+                }
+            }
+        })());
+    }
+
+    /**
+     * @description Get all instances that reference this instance.
+     * @readonly
+     * @type {Iterable<Instance>}
+     * @memberof Instance
+     */
+    get referrers(): Iterable<Instance> {
+        return this.vertex
+            .getIncoming()
+            .map(({ fromVertex }) => InstanceProxy.proxify(new Instance(fromVertex, this.vocabulary)));
     }
 
     /**
@@ -118,101 +138,105 @@ export class Instance {
 
     /**
      * @description Gets referrers of this instance with the specified property.
-     * @param {(string | Property)} property The reference property.
+     * @param {(string | Property)} propertyReference The reference property.
      * @returns {Instance}
      * @memberof Instance
      */
-    getReferrers(property: string | Property): Iterable<Instance> {
-        if (!property) {
-            throw new ReferenceError(`Invalid property. property is '${property}'`);
+    getReferrers(propertyReference: string | Property): Iterable<Instance> {
+        if (!propertyReference) {
+            throw new ReferenceError(`Invalid property. property is '${propertyReference}'`);
         }
 
-        const propertyId = typeof property === 'string' ? Id.expand(property) : Id.expand(property.id);
-        return this.vertex.getIncoming(propertyId)
-            .map(({ fromVertex }) => new Instance(fromVertex, this.vocabulary));
+        const property = typeof propertyReference === 'string' ? this.vocabulary.getProperty(propertyReference) : propertyReference;
+        if (!property) {
+            throw new Errors.ResourceNotFoundError(propertyReference as string, 'Property');
+        }
+
+        return this.vertex.getIncoming(Id.expand(property.id))
+            .map(({ fromVertex }) => InstanceProxy.proxify(new Instance(fromVertex, this.vocabulary)));
     }
 
     /**
      * @description Checks if the instance is the type of a class.
-     * @param {(string | Class)} classType The class id or class reference to check.
+     * @param {(string | Class)} classReference The class id or class reference to check.
      * @returns {boolean} True if the instance is an instance of the specified class, else false.
      * @memberof Instance
      */
-    isInstanceOf(classType: string | Class): boolean {
-        if (!classType) {
-            throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
+    isInstanceOf(classReference: string | Class): boolean {
+        if (!classReference) {
+            throw new ReferenceError(`Invalid classType. classType is '${classReference}'`);
         }
 
-        const classId = typeof classType === 'string' ? Id.expand(classType) : Id.expand(classType.id);
-        return this.vertex.isType(classId);
+        const classId = typeof classReference === 'string' ? Id.expand(classReference) : Id.expand(classReference.id);
+        return this.vertex.isType(classId) || this.classes.map(x => x.isDescendantOf(classId)).some(x => x);
     }
 
     /**
      * @description Removes a class from the instance.
-     * @param {(string | Class)} classType The class id or class reference to remove.
+     * @param {(string | Class)} classReference The class id or class reference to remove.
      * @returns {this}
      * @memberof Instance
      */
-    removeClass(classType: string | Class): this {
+    removeClass(classReference: string | Class): this {
+        if (!classReference) {
+            throw new ReferenceError(`Invalid classReference. classReference is '${classReference}'`);
+        }
+
+        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
         if (!classType) {
-            throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
+            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+        }
+        if (!classType.isType('rdfs:Class')) {
+            throw new Errors.ResourceTypeMismatchError(classType.id, 'Class', classType.type);
         }
 
         if (!this.isInstanceOf(classType)) {
             return;
         }
 
-        if (this.vertex.types.count() === 0) {
+        if (this.vertex.types.count() === 1) {
             throw new Errors.InstanceClassRequiredError(this.id);
         }
 
-        const classReference = typeof classType === 'string' ? this.vocabulary.getClass(classType) : classType;
-        if (!classReference.isType('rdfs:Class')) {
-            throw new Errors.ResourceTypeMismatchError(classReference.id, 'Class', classReference.type);
-        }
-
         // Remove all property values and outgoing references for class properties.
-        for (const property of classReference.ownProperties) {
-            if (property.valueType === ValueType.id || property.valueType === ValueType.vocab) {
-                this.vertex.removeOutgoing(Id.expand(property.id));
-            } else {
-                this.vertex.deleteAttribute(Id.expand(property.id));
+        this.vertex.removeType(Id.expand(classType.id));
+        const currentProps = [...this.properties];
+        for (const property of classType.properties) {
+            if (!currentProps.some(x => x.id === property.id)) {
+                if (property.valueType === ValueType.id || property.valueType === ValueType.vocab) {
+                    this.vertex.removeOutgoing(Id.expand(property.id));
+                } else {
+                    this.vertex.deleteAttribute(Id.expand(property.id));
+                }
             }
         }
 
-        this.vertex.removeType(Id.expand(classReference.id));
         return this;
     }
 
     /**
      * @description Sets the class type of an instance.
-     * @param {(string | Class)} classType The class type of the instance.
+     * @param {(string | Class)} classReference The class type of the instance.
      * @memberof Instance
      */
-    setClass(classType: string | Class): this {
+    setClass(classReference: string | Class): this {
+        if (!classReference) {
+            throw new ReferenceError(`Invalid classType. classType is '${classReference}'`);
+        }
+
+        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
         if (!classType) {
-            throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
+            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+        }
+        if (!(classType instanceof Class)) {
+            throw new Errors.ResourceTypeMismatchError(classReference as string, 'Class', '');
         }
 
-        let classRef: Class;
-        if (typeof classType === 'string') {
-            const resource = this.vocabulary.getResource(classType);
-            if (!resource) {
-                throw new Errors.ResourceNotFoundError(classType, 'Class');
-            }
-
-            if (!(resource instanceof Class)) {
-                throw new Errors.ResourceTypeMismatchError(classType, 'Class', '');
-            }
-        } else {
-            classRef = classType;
-        }
-
-        if (this.vertex.isType(Id.expand(classRef.id))) {
+        if (this.isInstanceOf(classType)) {
             return;
         }
 
-        this.vertex.setType(Id.expand(classRef.id));
+        this.vertex.setType(Id.expand(classType.id));
         return this;
     }
 
@@ -222,7 +246,7 @@ export class Instance {
      * @returns {Promise<any>}
      * @memberof Instance
      */
-    toJson(options?: JsonFormatOptions): Promise<any> {
+    toJson<T = any>(options?: JsonFormatOptions): Promise<T> {
         return this.vertex.toJson(options);
     }
 }
@@ -288,6 +312,10 @@ export class InstanceProperty {
         return this.property.label;
     }
 
+    get term() {
+        return this.property.term;
+    }
+
     /**
      * @description Gets the value type of the property.
      * @readonly
@@ -322,7 +350,15 @@ export class InstanceProperty {
                         return undefined;
                     }
 
-                    return this.vocabulary.getInstance(outgoingInstance.toVertex.id);
+                    let instance = this.vocabulary.getInstance(outgoingInstance.toVertex.id);
+                    if (!instance) {
+                        // @type: @vocab allows for IRI's to point to custom vocabulary instances defined in the document.
+                        // If the instance was not found in the vocabulary then its  alocal vocabulary instace in the document.
+                        // Construct an instance and return that.
+                        instance = new Instance(outgoingInstance.toVertex, this.vocabulary);
+                    }
+
+                    return InstanceProxy.proxify(instance);
                 }
                 default: {
                     return this.vertex.getAttributeValue(Id.expand(this.property.id));
@@ -354,7 +390,7 @@ export class InstanceProperty {
                     if (currentReferenceId) {
                         this.vertex.removeOutgoing(Id.expand(this.property.id), currentReferenceId.toVertex.id);
                     }
-                    this.vertex.setOutgoing(Id.expand(this.property.id), referenceId);
+                    this.vertex.setOutgoing(Id.expand(this.property.id), referenceId, true);
                 }
             }
             default: {
@@ -397,6 +433,7 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
                 for (const instance of instances) {
                     yield instance;
                 }
+                break;
             }
             case (ValueType.vocab): {
                 const instances = this.vertex
@@ -406,6 +443,7 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
                 for (const instance of instances) {
                     yield instance;
                 }
+                break;
             }
             default: {
                 const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));

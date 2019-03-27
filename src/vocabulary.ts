@@ -42,20 +42,39 @@ export class Vocabulary implements types.Vocabulary {
                 rdfs: Context.RdfsNamespace,
                 xsd: Context.XSDNamesapce,
                 Class: 'rdfs:Class',
+                class: 'rdfs:Class',
                 Comment: 'rdfs:comment',
+                comment: 'rdfs:comment',
                 Domain: {
                     '@id': 'rdfs:domain',
                     '@type': '@id',
                     '@container': '@set'
                 },
+                domain: {
+                    '@id': 'rdfs:domain',
+                    '@type': '@id',
+                    '@container': '@set'
+                },
                 Label: 'rdfs:label',
+                label: 'rdfs:label',
                 Property: 'rdf:Property',
+                property: 'rdfs:label',
                 Range: {
                     '@id': 'rdfs:range',
                     '@type': '@id',
                     '@container': '@set'
                 },
+                range: {
+                    '@id': 'rdfs:range',
+                    '@type': '@id',
+                    '@container': '@set'
+                },
                 SubClassOf: {
+                    '@id': 'rdfs:subClassOf',
+                    '@type': '@id',
+                    '@container': '@set'
+                },
+                subClassOf: {
                     '@id': 'rdfs:subClassOf',
                     '@type': '@id',
                     '@container': '@set'
@@ -303,6 +322,10 @@ export class Vocabulary implements types.Vocabulary {
 
         const expandedId = Id.expand(id);
         const propertyV = this._graph.getVertex(expandedId);
+        if (!propertyV) {
+            return null;
+        }
+
         if (!propertyV.isType('rdf:Property')) {
             throw new Errors.ResourceTypeMismatchError(id, 'Property', propertyV.types.map(x => Id.compact(x.id)).items().join(','));
         }
@@ -384,16 +407,16 @@ export class Vocabulary implements types.Vocabulary {
 
     /**
      * @description Loads a vocabulary definition.
-     * @param {*} definition The definition to load.
+     * @param {object} definition The definition to load.
      * @returns {Promise<void>}
      * @memberof Vocabulary
      */
-    load(definition: any): Promise<void> {
+    load(definition: object): Promise<void> {
         if (!definition) {
             throw new ReferenceError(`Invalid definition. definition is '${definition}'`);
         }
 
-        return this._graph.load(definition, [this.contextUri]);
+        return this._graph.load(definition, [this.contextUri], this.baseIri);
     }
 
     /**

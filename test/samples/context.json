@@ -1,0 +1,36 @@
+{
+    "@context": {
+        "@vocab": "http://example.org/classes/",
+        "address": "Location/address",
+        "firstName": "Person/firstName",
+        "lastName": "Person/lastName",
+        "location": {
+            "@id": "Person/location",
+            "@type": "@id"
+        },
+        "deptName": "Department/name",
+        "deptLocation": {
+            "@id": "Department/location",
+            "@type": "@id"
+        },
+        "level": "Employee/level",
+        "manager": {
+            "@id": "Employee/manager",
+            "@type": "@id"
+        },
+        "department": {
+            "@id": "Employee/department",
+            "@type": "@id"
+        },
+        "manages": {
+            "@id": "Manager/manages",
+            "@type": "@id",
+            "@container": "@set"
+        },
+        "company": "Contractor/company",
+        "phoneNo": {
+            "@id": "Department/phoneNo",
+            "@container": "@set"
+        }
+    }
+}

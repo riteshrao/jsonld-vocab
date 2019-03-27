@@ -37,6 +37,18 @@ export namespace Errors {
     }
 
     /**
+     * @description Error thrown when loading duplicate context files.
+     * @export
+     * @class DuplicateContextError
+     * @extends {VocabularyError}
+     */
+    export class DuplicateContextError extends VocabularyError {
+        constructor(public readonly uri: string) {
+            super(`Another context with the uri ${uri} has already been loaded`);
+        }
+    }
+
+    /**
      * @description Error thrown when a duplicate term was found.
      * @export
      * @class DuplicateContextTermError
@@ -71,12 +83,30 @@ export namespace Errors {
     }
 
     /**
+     * @description Error thrown when the id of an instance is invalid.
+     * @export
+     * @class InvalidInstanceIdError
+     * @extends {VocabularyError}
+     */
+    export class InvalidInstanceIdError extends VocabularyError {
+        /**
+         * Creates an instance of InvalidInstanceIdError.
+         * @param {string} instanceId The invalid instance id.
+         * @param {string} details The error details.
+         * @memberof InvalidInstanceIdError
+         */
+        constructor(public readonly instanceId: string, details: string) {
+            super(`Invalid id ${instanceId}. Details: ${details}`);
+        }
+    }
+
+    /**
      * @description Error thrown when an invalid resource id is found.
      * @export
      * @class InvalidResourceId
      * @extends {VocabularyError}
      */
-    export class InvalidResourceId extends VocabularyError {
+    export class InvalidResourceIdError extends VocabularyError {
         /**
          * Creates an instance of InvalidResourceId.
          * @param {string} resourceId The invalid resource id.
@@ -138,6 +168,23 @@ export namespace Errors {
          */
         constructor(public readonly instanceId: string, public readonly propertyId: string, details: string) {
             super(`Invalid operation on container property ${propertyId} for instance ${instanceId}. Details: ${details}`);
+        }
+    }
+
+    /**
+     * @description Error thrown when an instance is not found.
+     * @export
+     * @class InstanceNotFoundError
+     * @extends {VocabularyError}
+     */
+    export class InstanceNotFoundError extends VocabularyError {
+        /**
+         * Creates an instance of InstanceNotFoundError.
+         * @param {string} instanceId Id of the instance that was not found.
+         * @memberof InstanceNotFoundError
+         */
+        constructor(public readonly instanceId: string) {
+            super(`An instance with id ${instanceId} was not found.`);
         }
     }
 
