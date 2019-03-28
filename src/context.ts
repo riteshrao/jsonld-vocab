@@ -102,41 +102,6 @@ export class Context {
     }
 
     /**
-     * @description Sets the term associated with an id.
-     * @param {string} term The term to set.
-     * @param {string} id The id associated with the term.
-     * @returns {ContextTerm} The term.
-     * @memberof Context
-     */
-    setTerm(term: string, id: string): ContextTerm {
-        if (!term) {
-            throw new ReferenceError(`Invalid term. term is ${term}`);
-        }
-
-        if (!id) {
-            throw new ReferenceError(`Invalid id. id is ${id}`);
-        }
-
-        if (this.isDefined(term)) {
-            throw new Errors.DuplicateContextTermError(term);
-        }
-
-        const compactId = Id.compact(id);
-        const existing = this.resolveTerm(id);
-        if (existing) {
-            // Id was already mapped to another term. Copy its definition over to the new term and delete the old one.
-            existing.definition.id = compactId;
-            this._terms.set(term, existing.definition);
-            this._terms.delete(existing.term);
-            return existing.definition;
-        } else {
-            const definition = new ContextTerm(id);
-            this._terms.set(term, definition);
-            return definition;
-        }
-    }
-
-    /**
      * @description Gets the term.
      * @param {string} term The term key to lookup.
      * @returns {ContextTerm}
@@ -198,19 +163,6 @@ export class Context {
     }
 
     /**
-     * @description Removes a term from the context.
-     * @param {string} term The term to remove from the context.
-     * @memberof Context
-     */
-    removeTerm(term: string): void {
-        if (!term) {
-            throw new ReferenceError(`Invalid term. term is '${term}'`);
-        }
-
-        this._terms.delete(term);
-    }
-
-    /**
      * @description Resolves the term mapped to an id.
      * @param {string} id The id whose mapped term should be resolved.
      * @memberof Context
@@ -241,9 +193,37 @@ export class Context {
                 throw new Errors.ContextSyntaxError(`Invalid context term ${term}. ${JsonldKeywords.id} not specified for term`);
             }
 
-            const definition = this.isDefined(term) ? this.getTerm(term) : this.setTerm(term, value[JsonldKeywords.id]);
+            const definition = this.isDefined(term) ? this.getTerm(term) : this._setTerm(term, value[JsonldKeywords.id]);
             definition.container = value['@container'];
             definition.type = value[JsonldKeywords.type];
+        }
+    }
+
+    private _setTerm(term: string, id: string): ContextTerm {
+        if (!term) {
+            throw new ReferenceError(`Invalid term. term is ${term}`);
+        }
+
+        if (!id) {
+            throw new ReferenceError(`Invalid id. id is ${id}`);
+        }
+
+        if (this.isDefined(term)) {
+            throw new Errors.DuplicateContextTermError(term);
+        }
+
+        const compactId = Id.compact(id);
+        const existing = this.resolveTerm(id);
+        if (existing) {
+            // Id was already mapped to another term. Copy its definition over to the new term and delete the old one.
+            existing.definition.id = compactId;
+            this._terms.set(term, existing.definition);
+            this._terms.delete(existing.term);
+            return existing.definition;
+        } else {
+            const definition = new ContextTerm(id);
+            this._terms.set(term, definition);
+            return definition;
         }
     }
 }

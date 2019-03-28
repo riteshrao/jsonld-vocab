@@ -78,6 +78,19 @@
             "range": "xsd:string"
         },
         {
+            "@id": "Project",
+            "@type": "Class",
+            "label": "Project",
+            "comment": "Project"
+        },
+        {
+            "@id": "Project/name",
+            "@type": "Property",
+            "label": "Project name",
+            "domain": "Project",
+            "range": "xsd:string"
+        },
+        {
             "@id": "Employee",
             "@type": "Class",
             "subClassOf": "Person",
@@ -124,6 +137,14 @@
             "range": "Employee"
         },
         {
+            "@id": "Manager/project",
+            "@type": "Property",
+            "label": "Project",
+            "comment": "Projects that the manager manages",
+            "domain": "Manager",
+            "range": "Project"
+        },
+        {
             "@id": "Contractor",
             "@type": "Class",
             "subClassOf": "Person",
@@ -151,6 +172,10 @@
             "@id": "Department/deptC",
             "@type": "Department",
             "name": "Department A"
+        },
+        {
+            "@id": "Manager/managerA",
+            "@type": "Manager"
         }
     ]
 }

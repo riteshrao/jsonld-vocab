@@ -60,7 +60,7 @@ describe('Class', () => {
             const managerClass = vocabulary.getClass('Manager');
             const properties = [...managerClass.properties];
 
-            expect(properties.length).to.equal(7);
+            expect(properties.length).to.equal(8);
             expect(properties.some(x => x.id === 'Person/firstName')).to.be.true;
             expect(properties.some(x => x.id === 'Person/lastName')).to.be.true;
             expect(properties.some(x => x.id === 'Person/location')).to.be.true;

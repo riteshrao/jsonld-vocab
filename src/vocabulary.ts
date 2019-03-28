@@ -200,7 +200,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        if (!classTypes) {
+        if (!classTypes || classTypes.length === 0) {
             throw new ReferenceError(`Invalid classType. classType is '${classTypes}'`);
         }
 
@@ -219,7 +219,8 @@ export class Vocabulary implements types.Vocabulary {
             classRefs.push(classRef);
         }
 
-        const instanceV = this.graph.createVertex(Id.expand(id));
+        const normalizedId = Id.expand(id, true);
+        const instanceV = this.graph.createVertex(normalizedId);
         const instance = new Instance(instanceV, this);
         for (const classRef of classRefs) {
             instance.setClass(classRef);
@@ -290,10 +291,11 @@ export class Vocabulary implements types.Vocabulary {
      * @description Gets instances of a specific class.
      * @template T
      * @param {types.ClassReference} classRef The id of the class or class instance whose instances are to be retrieved.
+     * @param {boolean} descendants True to include all descendant instances of the specifid class.
      * @returns {(Iterable<Instance & T>)}
      * @memberof Vocabulary
      */
-    getInstancesOf<T = {}>(classRef: types.ClassReference): Iterable<Instance & T> {
+    getInstancesOf<T = {}>(classRef: types.ClassReference, descendants: boolean = false): Iterable<Instance & T> {
         if (!classRef) {
             throw new ReferenceError(`Invalid classRef. classRef is '${classRef}'`);
         }
@@ -303,10 +305,36 @@ export class Vocabulary implements types.Vocabulary {
             throw new Errors.ResourceNotFoundError(classRef as string, 'Class');
         }
 
-        return this.graph
-            .getVertex(Id.expand(classType.id))
-            .instances
-            .map(instanceV => InstanceProxy.proxify<T>(new Instance(instanceV, this)));
+        const classV = this.graph.getVertex(Id.expand(classType.id));
+        if (!descendants) {
+            return classV
+                .instances
+                .map(instanceV => InstanceProxy.proxify<T>(new Instance(instanceV, this)));
+        } else {
+            const _that = this;
+            return new Iterable((function* getDesendantInstances() {
+                const tracker = new Set<string>();
+                // First the class instances and yield those results.
+                for (const instanceV of classV.instances) {
+                    if (!tracker.has(instanceV.id)) {
+                        tracker.add(instanceV.id);
+                        yield InstanceProxy.proxify<T>(new Instance(instanceV, _that));
+                    }
+                }
+
+                for (const descendantTypes of classType.descendants) {
+                    const descendantV = _that.graph.getVertex(Id.expand(descendantTypes.id));
+                    if (descendantV) {
+                        for (const instanceV of descendantV.instances) {
+                            if (!tracker.has(instanceV.id)) {
+                                tracker.add(instanceV.id);
+                                yield InstanceProxy.proxify<T>(new Instance(instanceV, _that));
+                            }
+                        }
+                    }
+                }
+            })());
+        }
     }
 
     /**
@@ -346,8 +374,12 @@ export class Vocabulary implements types.Vocabulary {
 
         const expandedId = Id.expand(id);
         const resourceV = this._graph.getVertex(expandedId);
-        if (!resourceV || (!resourceV.isType('rdfs:Class') && !resourceV.isType('rdf:Property'))) {
-            throw new Errors.ResourceNotFoundError(id, 'Resource');
+        if (!resourceV) {
+            return null;
+        }
+
+        if (!resourceV.isType('rdfs:Class') && !resourceV.isType('rdf:Property')) {
+            throw new Errors.ResourceTypeMismatchError(id, 'Class | Property', resourceV.types.map(x => x.id).items().join(','));
         }
 
         return this._createResource(resourceV);

@@ -34,19 +34,6 @@ export class Property extends Resource {
     }
 
     /**
-     * @description Sets the container type of the property.
-     * @memberof Property
-     */
-    set container(value: ContainerType) {
-        const definition = this.getTermDefinition();
-        if (!definition) {
-            throw new Errors.PropertyTermNotDefinedError(this.id);
-        }
-
-        definition.container = value ? value : undefined;
-    }
-
-    /**
      * @description Gets the domains that the property applies to.
      * @readonly
      * @type {Iterable<Resource>}
@@ -80,19 +67,6 @@ export class Property extends Resource {
     get valueType(): string | ValueType {
         const definition = this.getTermDefinition();
         return definition ? definition.type : undefined;
-    }
-
-    /**
-     * @description Sets the value type of the property.
-     * @memberof Property
-     */
-    set valueType(value: string | ValueType) {
-        const definition = this.getTermDefinition();
-        if (!definition) {
-            throw new Errors.PropertyTermNotDefinedError(this.id);
-        }
-
-        definition.type = value ? value : undefined;
     }
 
     /**
@@ -241,7 +215,7 @@ export class Property extends Resource {
      */
     static create(id: string, vocabulary: Vocabulary): Property {
         const expandedId = Id.expand(id, true);
-        if (vocabulary.hasResource(expandedId)) {
+        if (vocabulary.hasResource(expandedId) || vocabulary.hasDataType(expandedId) || vocabulary.hasInstance(expandedId)) {
             throw new Errors.DuplicateResourceError(id);
         }
 

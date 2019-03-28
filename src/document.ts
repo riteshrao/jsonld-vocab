@@ -1,24 +1,35 @@
-import JsonldGraph from 'jsonld-graph';
 import Iterable from 'jsiterable';
+import JsonldGraph from 'jsonld-graph';
+import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
 
 import { ValueType } from './context';
 import Errors from './errors';
 import Id from './id';
 import Instance from './instance';
 import InstanceProxy from './instanceProxy';
-import Vocabulary from './vocabulary';
 import { ClassReference, InstanceReference } from './types';
-import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
+import Vocabulary from './vocabulary';
 
+/**
+ *  Normalizer function used to normalize instances in a document.
+ */
 export type InstanceNormalizer = (instance: Instance, vocabulary: Vocabulary) => void;
 
+/**
+ *  Options used by a Document.
+ */
 export type DocumentOptions = {
     blankIdNormalizer?: InstanceNormalizer;
     blankTypeNormalizer?: InstanceNormalizer
 };
 
+/**
+ * @description A document based on a vocabulary.
+ * @export
+ * @class Document
+ */
 export class Document {
-    private readonly _graph: JsonldGraph;
+    private readonly graph: JsonldGraph;
 
     /**
      * Creates an instance of Document.
@@ -32,10 +43,10 @@ export class Document {
             throw new ReferenceError(`Invalid vocabulary. vocabulary is '${vocabulary}'`);
         }
 
-        this._graph = new JsonldGraph();
-        this._graph.addPrefix('vocab', vocabulary.baseIri);
+        this.graph = new JsonldGraph();
+        this.graph.addPrefix('vocab', vocabulary.baseIri);
         for (const [uri, context] of this.vocabulary.context.definitions) {
-            this._graph.addContext(uri, context);
+            this.graph.addContext(uri, context);
         }
     }
 
@@ -46,8 +57,8 @@ export class Document {
      * @memberof Document
      */
     get instances(): Iterable<Instance> {
-        return this._graph
-            .getVertices(vertex => vertex.types.count() > 0)
+        return this.graph
+            .getVertices()
             .map(vertex => InstanceProxy.proxify(new Instance(vertex, this.vocabulary)));
     }
 
@@ -72,7 +83,7 @@ export class Document {
             throw new Errors.InvalidInstanceIdError(id, 'A class or resource with the specified id already exists.');
         }
 
-        if (this._graph.hasVertex(id)) {
+        if (this.graph.hasVertex(id)) {
             throw new Errors.DuplicateInstanceError(id);
         }
 
@@ -85,7 +96,7 @@ export class Document {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
-        const instance = new Instance(this._graph.createVertex(id), this.vocabulary);
+        const instance = new Instance(this.graph.createVertex(id), this.vocabulary);
         instance.setClass(classType);
         return InstanceProxy.proxify<T>(instance);
     }
@@ -106,7 +117,7 @@ export class Document {
             throw new Errors.InstanceNotFoundError(id);
         }
 
-        const instanceV = this._graph.getVertex(id);
+        const instanceV = this.graph.getVertex(id);
         if (!instanceV || instanceV.types.count() === 0) {
             throw new Errors.InstanceNotFoundError(id);
         }
@@ -123,7 +134,7 @@ export class Document {
      * @returns {(Iterable<Instance & T>)}
      * @memberof Document
      */
-    getInstances<T = {}>(classReference: ClassReference, descendants: boolean = false): Iterable<Instance & T> {
+    getInstancesOf<T = {}>(classReference: ClassReference, descendants: boolean = false): Iterable<Instance & T> {
         if (!classReference) {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}`);
         }
@@ -133,18 +144,18 @@ export class Document {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
-        const classVertex = this._graph.getVertex(Id.expand(classType.id));
+        const classV = this.graph.getVertex(Id.expand(classType.id));
         if (!descendants) {
-            return classVertex
+            return classV
                 .instances
                 .map(vertex => InstanceProxy.proxify<T>(new Instance(vertex, this.vocabulary)));
         } else {
             const _that = this;
             return new Iterable((function* getDescendantInstances() {
                 const tracker = new Set<string>();
-                // First the class instances and yield those results.
-                if (classVertex) {
-                    for (const instanceV of classVertex.instances) {
+                if (classV) {
+                    // First the class instances and yield those results.
+                    for (const instanceV of classV.instances) {
                         if (!tracker.has(instanceV.id)) {
                             tracker.add(instanceV.id);
                             yield InstanceProxy.proxify<T>(new Instance(instanceV, _that.vocabulary));
@@ -153,7 +164,7 @@ export class Document {
                 }
 
                 for (const descendantTypes of classType.descendants) {
-                    const descendantV = _that._graph.getVertex(Id.expand(descendantTypes.id));
+                    const descendantV = _that.graph.getVertex(Id.expand(descendantTypes.id));
                     if (descendantV) {
                         for (const instanceV of descendantV.instances) {
                             if (!tracker.has(instanceV.id)) {
@@ -182,7 +193,7 @@ export class Document {
             return false;
         }
 
-        return this._graph.hasVertex(id);
+        return this.graph.hasVertex(id);
     }
 
     /**
@@ -195,7 +206,7 @@ export class Document {
             return;
         }
 
-        for (const vertex of this._graph.getVertices(({ id }) => !this.vocabulary.hasResource(id))) {
+        for (const vertex of this.graph.getVertices(({ id }) => !this.vocabulary.hasResource(id))) {
             if (vertex.types.count() === 0 && this.options.blankTypeNormalizer) {
                 this.options.blankTypeNormalizer(new Instance(vertex, this.vocabulary), this.vocabulary);
             }
@@ -218,8 +229,7 @@ export class Document {
             throw new ReferenceError(`Invalid input. input is '${input}'`);
         }
 
-        await this._graph.load(input, contexts);
-        this.normalize();
+        await this.graph.load(input, contexts);
     }
 
     /**
@@ -234,7 +244,7 @@ export class Document {
         }
 
         if (!recursive) {
-            this._graph.removeVertex(typeof instanceReference === 'string' ? instanceReference : instanceReference.id);
+            this.graph.removeVertex(typeof instanceReference === 'string' ? instanceReference : instanceReference.id);
         } else {
             const instance = typeof instanceReference === 'string' ? this.getInstance(instanceReference) : instanceReference;
             if (!instance) {
@@ -251,7 +261,7 @@ export class Document {
      * @memberof Document
      */
     toJson(options?: JsonFormatOptions) {
-        return this._graph.toJson(options);
+        return this.graph.toJson(options);
     }
 
     private _removeInstanceRecursive(instance: Instance, tracker: Set<string> = new Set<string>()): void {
@@ -278,7 +288,7 @@ export class Document {
             }
         }
 
-        this._graph.removeVertex(instance.id);
+        this.graph.removeVertex(instance.id);
     }
 }
 

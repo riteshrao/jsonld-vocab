@@ -45,7 +45,11 @@
             "firstName": "Jane",
             "lastName": "Doe",
             "location": "urn:example.org:locations/nashua",
-            "department": "urn:example.org:departments/hr"
+            "department": "urn:example.org:departments/hr",
+            "project": [
+                { "projectName": "projectA" },
+                { "projectName": "projectB" }
+            ]
         }
     ]
 }

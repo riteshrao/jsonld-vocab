@@ -392,7 +392,9 @@ export class Class extends Resource {
      */
     static create(id: string, vocabulary: Vocabulary): Class {
         const normalizedId = Id.expand(id, true);
-        if (vocabulary.hasResource(normalizedId)) {
+        if (vocabulary.hasResource(normalizedId) ||
+            vocabulary.hasDataType(normalizedId) ||
+            vocabulary.hasInstance(normalizedId)) {
             throw new Errors.DuplicateResourceError(id);
         }
 

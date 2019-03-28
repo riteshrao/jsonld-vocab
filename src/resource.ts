@@ -99,14 +99,6 @@ export abstract class Resource {
     }
 
     /**
-     * @description Sets the context term associated with the resource.
-     * @memberof Resource
-     */
-    set term(value: string) {
-        this.vocabulary.context.setTerm(value, this.id);
-    }
-
-    /**
      * @description Gets the resource type.
      * @readonly
      * @type {string}

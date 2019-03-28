@@ -104,10 +104,15 @@ export class Instance {
      * @type {Iterable<Instance>}
      * @memberof Instance
      */
-    get referrers(): Iterable<Instance> {
+    get referrers(): Iterable<{ property: Property, instance: Instance }> {
         return this.vertex
             .getIncoming()
-            .map(({ fromVertex }) => InstanceProxy.proxify(new Instance(fromVertex, this.vocabulary)));
+            .map((incoming) => {
+                return {
+                    property: this.vocabulary.getProperty(incoming.label),
+                    instance: InstanceProxy.proxify(new Instance(incoming.fromVertex, this.vocabulary))
+                };
+            });
     }
 
     /**
@@ -335,33 +340,19 @@ export class InstanceProperty {
         if (this.container) {
             return new ContainerPropertyValues(this.vertex, this.property, this.vocabulary);
         } else {
-            switch (this.valueType) {
-                case (ValueType.id): {
-                    const outgoingInstance = this.vertex.getOutgoing(Id.expand(this.property.id)).first();
-                    if (!outgoingInstance) {
-                        return undefined;
+            if (this.vertex.hasAttribute(Id.expand(this.property.id))) {
+                return this.vertex.getAttributeValue(Id.expand(this.property.id));
+            } else {
+                const outgoingInstance = this.vertex.getOutgoing(Id.expand(this.property.id)).first();
+                if (outgoingInstance) {
+                    const instance = this.vocabulary.getInstance(outgoingInstance.toVertex.id);
+                    if (instance) {
+                        return instance;
+                    } else {
+                        return InstanceProxy.proxify(new Instance(outgoingInstance.toVertex, this.vocabulary));
                     }
-
-                    return InstanceProxy.proxify(new Instance(outgoingInstance.toVertex, this.vocabulary));
-                }
-                case (ValueType.vocab): {
-                    const outgoingInstance = this.vertex.getOutgoing(Id.expand(this.property.id)).first();
-                    if (!outgoingInstance) {
-                        return undefined;
-                    }
-
-                    let instance = this.vocabulary.getInstance(outgoingInstance.toVertex.id);
-                    if (!instance) {
-                        // @type: @vocab allows for IRI's to point to custom vocabulary instances defined in the document.
-                        // If the instance was not found in the vocabulary then its  alocal vocabulary instace in the document.
-                        // Construct an instance and return that.
-                        instance = new Instance(outgoingInstance.toVertex, this.vocabulary);
-                    }
-
-                    return InstanceProxy.proxify(instance);
-                }
-                default: {
-                    return this.vertex.getAttributeValue(Id.expand(this.property.id));
+                } else {
+                    return undefined;
                 }
             }
         }
@@ -379,27 +370,24 @@ export class InstanceProperty {
                 'Value setter for container properties cannot be used. Use add/remove value methods instead.');
         }
 
-        switch (this.valueType) {
-            case (ValueType.id):
-            case (ValueType.vocab): {
-                if (value === null || value === undefined) {
-                    this.vertex.removeOutgoing(Id.expand(this.property.id));
-                } else {
-                    const referenceId = value instanceof Instance ? Id.expand(value.id) : '' + value;
-                    const currentReferenceId = this.vertex.getOutgoing(Id.expand(this.property.id)).first();
-                    if (currentReferenceId) {
-                        this.vertex.removeOutgoing(Id.expand(this.property.id), currentReferenceId.toVertex.id);
-                    }
-                    this.vertex.setOutgoing(Id.expand(this.property.id), referenceId, true);
-                }
-            }
-            default: {
-                if (value === null || value === undefined) {
-                    this.vertex.deleteAttribute(Id.expand(this.property.id));
-                } else {
-                    this.vertex.replaceAttributeValue(Id.expand(this.property.id), value);
-                }
-            }
+        if (value === null || value === undefined) {
+            this.vertex.removeOutgoing(Id.expand(this.property.id));
+            this.vertex.deleteAttribute(Id.expand(this.property.id));
+            return;
+        }
+
+        if ((this.valueType === ValueType.id || this.valueType === ValueType.vocab) && !(value instanceof Instance)) {
+            throw new Errors.InstancePropertyValueError(
+                Id.compact(this.vertex.id),
+                this.property.id,
+                'Value for @id or @vocab properties MUST be a valid Instance');
+        }
+
+        if (value instanceof Instance) {
+            this.vertex.removeOutgoing(Id.expand(this.property.id));
+            this.vertex.setOutgoing(Id.expand(this.property.id), Id.expand(value.id), true);
+        } else {
+            this.vertex.replaceAttributeValue(Id.expand(this.property.id), value);
         }
     }
 }
@@ -424,35 +412,25 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
     }
 
     *[Symbol.iterator](): Iterator<any> {
-        switch (this.property.valueType) {
-            case (ValueType.id): {
-                const instances = this.vertex
-                    .getOutgoing(Id.expand(this.property.id))
-                    .map(outgoing => InstanceProxy.proxify(new Instance(outgoing.toVertex, this.vocabulary)));
-
-                for (const instance of instances) {
-                    yield instance;
+        if (this.vertex.hasAttribute(Id.expand(this.property.id))) {
+            const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
+            if (values instanceof Array) {
+                for (const value of values) {
+                    yield value;
                 }
-                break;
+            } else {
+                return values;
             }
-            case (ValueType.vocab): {
-                const instances = this.vertex
-                    .getOutgoing(Id.expand(this.property.id))
-                    .map(outgoing => this.vocabulary.getInstance(outgoing.toVertex.id));
-
-                for (const instance of instances) {
+        } else {
+            for (const { toVertex } of this.vertex.getOutgoing(Id.expand(this.property.id))) {
+                const instance = this.vocabulary.getInstance(toVertex.id);
+                if (instance) {
                     yield instance;
-                }
-                break;
-            }
-            default: {
-                const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
-                if (values instanceof Array) {
-                    for (const value of values) {
-                        yield value;
-                    }
                 } else {
-                    return values;
+                    // @type: @vocab allows for IRI's to point to custom vocabulary instances defined in the document.
+                    // If the instance was not found in the vocabulary then its local vocabulary instance in the document.
+                    // Construct an instance and return that.
+                    yield InstanceProxy.proxify(new Instance(toVertex, this.vocabulary));
                 }
             }
         }
@@ -464,19 +442,15 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
      * @memberof ContainerPropertyValues
      */
     get count(): number {
-        switch (this.property.valueType) {
-            case (ValueType.id):
-            case (ValueType.vocab): {
-                return this.vertex.getOutgoing(Id.expand(this.property.id)).count();
+        if (this.vertex.hasAttribute(Id.expand(this.property.id))) {
+            const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
+            if (!values) {
+                return 0;
+            } else {
+                return values instanceof Array ? values.length : 1;
             }
-            default: {
-                const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
-                if (!values) {
-                    return 0;
-                } else {
-                    return values instanceof Array ? values.length : 1;
-                }
-            }
+        } else {
+            return this.vertex.getOutgoing(Id.expand(this.property.id)).count();
         }
     }
 
@@ -490,9 +464,15 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
             throw new ReferenceError(`Invalid value. value is ${value}`);
         }
 
-        if (this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) {
-            const referenceId = value instanceof Instance ? Id.expand(value.id) : '' + value;
-            this.vertex.setOutgoing(Id.expand(this.property.id), referenceId, false);
+        if ((this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) && !(value instanceof Instance)) {
+            throw new Errors.InstancePropertyValueError(
+                Id.compact(this.vertex.id),
+                this.property.id,
+                'Value for @id or @vocab properties MUST be a valid Instance');
+        }
+
+        if (value instanceof Instance) {
+            this.vertex.setOutgoing(Id.expand(this.property.id), Id.expand(value.id));
         } else {
             this.vertex.addAttributeValue(Id.expand(this.property.id), value);
         }
@@ -508,9 +488,15 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
             throw new ReferenceError(`Invalid value. value is ${value}`);
         }
 
-        if (this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) {
-            const referenceId = value instanceof Instance ? Id.expand(value.id) : Id.expand('' + value);
-            this.vertex.removeOutgoing(Id.expand(this.property.id), referenceId);
+        if ((this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) && !(value instanceof Instance)) {
+            throw new Errors.InstancePropertyValueError(
+                Id.compact(this.vertex.id),
+                this.property.id,
+                'Value for @id or @vocab properties MUST be a valid Instance');
+        }
+
+        if (value instanceof Instance) {
+            this.vertex.removeOutgoing(Id.expand(this.property.id), Id.expand(value.id));
         } else {
             this.vertex.removeAttributeValue(Id.expand(this.property.id), value);
         }
@@ -521,11 +507,8 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
      * @memberof ContainerPropertyValues
      */
     clear(): void {
-        if (this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) {
-            this.vertex.removeOutgoing(Id.expand(this.property.id));
-        } else {
-            this.vertex.deleteAttribute(Id.expand(this.property.id));
-        }
+        this.vertex.removeOutgoing(Id.expand(this.property.id));
+        this.vertex.deleteAttribute(Id.expand(this.property.id));
     }
 }
 

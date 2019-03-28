@@ -9,18 +9,22 @@ const testInstances = require('./samples/instances.json');
 describe('Instance', () => {
 
     let vocabulary: Vocabulary;
-    let document: Document;
 
-    before(async () => {
+
+    beforeEach(async () => {
         vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/classes');
         vocabulary.context.load('http://example.org/context', testContext);
         await vocabulary.load(testClasses);
-
-        document = new Document(vocabulary);
-        await document.load(testInstances);
     });
 
     describe('.classes', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should return all classes of an instance', () => {
             const instance = document.getInstance('urn:example.org:employees/jdoe');
             expect(instance.classes.count()).to.equal(2);
@@ -29,10 +33,17 @@ describe('Instance', () => {
     });
 
     describe('.properties', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should return all properties of the class', () => {
             const instance = document.getInstance('urn:example.org:employees/jdoe');
             const properties = [...instance.properties];
-            expect(properties.length).to.equal(7);
+            expect(properties.length).to.equal(8);
             expect(properties.some(x => x.id === 'Person/firstName')).to.be.true;
             expect(properties.some(x => x.id === 'Person/lastName')).to.be.true;
             expect(properties.some(x => x.id === 'Person/location')).to.be.true;
@@ -43,13 +54,20 @@ describe('Instance', () => {
     });
 
     describe('.referrers', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should get referrers of instance', () => {
             const instance = document.getInstance('urn:example.org:locations/nashua');
             const referrers = [...instance.referrers];
             expect(referrers.length).to.equal(3);
-            expect(referrers.some(x => x.id === 'urn:example.org:employees/jilld')).to.be.true;
-            expect(referrers.some(x => x.id === 'urn:example.org:employees/janed')).to.be.true;
-            expect(referrers.some(x => x.id === 'urn:example.org:departments/finance')).to.be.true;
+            expect(referrers.some(referrer => referrer.instance.id === 'urn:example.org:employees/jilld')).to.be.true;
+            expect(referrers.some(referrer => referrer.instance.id === 'urn:example.org:employees/janed')).to.be.true;
+            expect(referrers.some(referrer => referrer.instance.id === 'urn:example.org:departments/finance')).to.be.true;
         });
 
         it('should return empty when instance has no referrers', () => {
@@ -60,6 +78,13 @@ describe('Instance', () => {
     });
 
     describe('.getProperty', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should throw when property reference is undefined, null or empty', () => {
             const instance = document.getInstance('urn:example.org:locations/nashua');
             expect(() => instance.getProperty(undefined)).to.throw(ReferenceError);
@@ -77,15 +102,21 @@ describe('Instance', () => {
 
         it('should get property from multiple class type instance', () => {
             const instance = document.getInstance('urn:example.org:employees/janed');
-            const firstNameProperty = instance.getProperty('Person/firstName');
-            const companyProperty = instance.getProperty('Contractor/company');
-            expect(firstNameProperty).to.be.ok;
-            expect(companyProperty).to.be.ok;
-
+            expect(instance.getProperty('Person/firstName')).to.be.ok;
+            expect(instance.getProperty('Contractor/company')).to.be.ok;
+            expect(instance.getProperty('Manager/manages')).to.be.ok;
+            expect(instance.getProperty('Manager/project')).to.be.ok;
         });
     });
 
     describe('.getReferrers', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should throw when property reference is undefined, null or empty', () => {
             const instance = document.getInstance('urn:example.org:locations/nashua');
             expect(() => instance.getReferrers(undefined)).to.throw(ReferenceError);
@@ -113,6 +144,13 @@ describe('Instance', () => {
     });
 
     describe('.isInstanceOf', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should throw when class reference is undefined, null or empty', () => {
             const instance = document.getInstance('urn:example.org:employees/janed');
             expect(() => instance.isInstanceOf(undefined)).to.throw(ReferenceError);
@@ -133,6 +171,13 @@ describe('Instance', () => {
     });
 
     describe('.removeClass', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should throw when class reference is undefined, null, or empty', () => {
             const instance = document.getInstance('urn:example.org:locations/scranton');
             expect(() => instance.removeClass(undefined)).to.throw(ReferenceError);
@@ -164,16 +209,23 @@ describe('Instance', () => {
             expect(document
                 .getInstance('urn:example.org:locations/nashua')
                 .referrers
-                .some(x => x.id === 'urn:example.org:employees/janed')).to.be.true;
+                .some(x => x.instance.id === 'urn:example.org:employees/janed')).to.be.true;
 
             expect(document
                 .getInstance('urn:example.org:departments/hr')
                 .referrers
-                .some(x => x.id === 'urn:example.org:employees/janed')).to.be.false;
+                .some(x => x.instance.id === 'urn:example.org:employees/janed')).to.be.false;
         });
     });
 
     describe('.setClass', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should throw when class reference is undefined, null or empty', () => {
             const instance = document.getInstance('urn:example.org:employees/jilld');
             expect(() => instance.setClass(undefined)).to.throw(ReferenceError);
@@ -208,6 +260,13 @@ describe('Instance', () => {
     });
 
     describe('.toJson', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
         it('should return json representation of instance', async () => {
             const instance = document.getInstance('urn:example.org:employees/jdoe');
             const json = await instance.toJson({ context: 'http://example.org/context' });
@@ -263,8 +322,16 @@ describe('Instance', () => {
     });
 
     describe('.values', () => {
-        before(() => {
-            document.createInstance('Location', 'urn:example.org:locations/testLocation');
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary);
+            await document.load(testInstances);
+        });
+
+        beforeEach(() => {
+            document.createInstance('Location', 'urn:example.org:locations/testLocation1');
+            document.createInstance('Location', 'urn:example.org:locations/testLocation2');
             document.createInstance('Department', 'urn:example.org:departments/testDepartment1');
             document.createInstance('Department', 'urn:example.org:departments/testDepartment2');
             document.createInstance('Employee', 'urn:example.org:employees/testEmployee1');
@@ -274,13 +341,13 @@ describe('Instance', () => {
         });
 
         it('can get and set primitive property value', () => {
-            const instance = document.getInstance('urn:example.org:locations/testLocation');
+            const instance = document.getInstance('urn:example.org:locations/testLocation1');
             instance.getProperty('Location/address').value = 'test_value';
             expect(instance.getProperty('Location/address').value).to.equal('test_value');
         });
 
         it('can set primitive property value using context term', () => {
-            const instance = document.getInstance<Location>('urn:example.org:locations/testLocation');
+            const instance = document.getInstance<Location>('urn:example.org:locations/testLocation1');
             instance.address = 'test_address_using_term';
             expect(instance.address).to.equal('test_address_using_term');
         });
@@ -315,13 +382,13 @@ describe('Instance', () => {
         it('can get, set and delete reference property', () => {
             const instance = document.getInstance('urn:example.org:employees/testEmployee1');
             const locationProperty = instance.getProperty('Person/location');
-            const locationInstance = document.getInstance('urn:example.org:locations/testLocation');
+            const locationInstance = document.getInstance('urn:example.org:locations/testLocation1');
 
             locationProperty.value = locationInstance;
 
             expect(locationProperty.value).to.be.ok;
             expect(locationProperty.value).to.be.instanceOf(Instance);
-            expect(locationProperty.value.id).to.equal('urn:example.org:locations/testLocation');
+            expect(locationProperty.value.id).to.equal('urn:example.org:locations/testLocation1');
 
             expect(locationInstance.getReferrers('Person/location').count()).to.equal(1);
             expect(locationInstance.getReferrers('Person/location').first().id).to.equal(instance.id);
@@ -333,13 +400,13 @@ describe('Instance', () => {
 
         it('can get, set and delete reference property using context term', () => {
             const instance = document.getInstance<Employee>('urn:example.org:employees/testEmployee2');
-            const locationInstance = document.getInstance<Location>('urn:example.org:locations/testLocation');
+            const locationInstance = document.getInstance<Location>('urn:example.org:locations/testLocation1');
 
             instance.location = locationInstance;
 
             expect(instance.location).to.be.ok;
             expect(instance.location).to.be.instanceOf(Instance);
-            expect(instance.location.id).to.equal('urn:example.org:locations/testLocation');
+            expect(instance.location.id).to.equal('urn:example.org:locations/testLocation1');
 
             expect(locationInstance.getReferrers('Person/location').count()).to.equal(1);
             expect(locationInstance.getReferrers('Person/location').first().id).to.equal(instance.id);
@@ -370,9 +437,14 @@ describe('Instance', () => {
             expect(testEmployee1.getReferrers('Manager/manages').some(x => x.id === 'urn:example.org:employees/testManager1')).to.be.true;
             expect(testEmployee2.getReferrers('Manager/manages').some(x => x.id === 'urn:example.org:employees/testManager1')).to.be.true;
 
+            managesProperty.value.remove(testEmployee1);
+            expect(managesProperty.value.count).to.equal(1);
+            expect([...managesProperty.value].some(x => x.id === 'urn:example.org:employees/testEmployee2')).to.be.true;
+            expect([...managesProperty.value].some(x => x.id === 'urn:example.org:employees/testEmployee1')).to.be.false;
+            expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(0);
+
             managesProperty.value.clear();
             expect(managesProperty.value.count).to.equal(0);
-            expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(0);
             expect(testEmployee2.getReferrers('Manager/manages').count()).to.equal(0);
         });
 
