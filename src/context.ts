@@ -154,7 +154,7 @@ export class Context {
 
         const context = document[JsonldKeywords.context];
         if (context instanceof Array) {
-            context.filter(x => typeof x === 'string').forEach(item => this._parseContextObject(item));
+            context.filter(x => typeof x !== 'string').forEach(item => this._parseContextObject(item));
         } else {
             this._parseContextObject(context);
         }

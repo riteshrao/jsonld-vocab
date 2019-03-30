@@ -356,4 +356,23 @@ describe('Vocabulary', () => {
             expect(property).to.be.instanceOf(Class);
         });
     });
+
+    describe('.context', () => {
+        before(async () => {
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary.context.load('http://example.org/context', testContext);
+            await vocabulary.load(testVocabulary);
+        });
+
+        it('should be able to load context with references', () => {
+            vocabulary.context.load('http://test/context', {
+                '@context': [
+                    'http://example.org/context',
+                    {
+                        test: 'Test/Term'
+                    }
+                ]
+            })
+        });
+    });
 });
