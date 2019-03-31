@@ -35,8 +35,7 @@ export class Vocabulary implements types.Vocabulary {
         this._graph.addPrefix('rdf', Context.RdfNamespace);
         this._graph.addPrefix('rdfs', Context.RdfsNamespace);
         this._graph.addPrefix('xsd', Context.XSDNamesapce);
-        this._context = new Context(baseIri, this._graph);
-        this._context.load(contextUri, {
+        this._graph.addContext(contextUri, {
             [JsonldKeywords.context]: {
                 rdf: Context.RdfNamespace,
                 rdfs: Context.RdfsNamespace,
@@ -81,6 +80,8 @@ export class Vocabulary implements types.Vocabulary {
                 }
             }
         });
+
+        this._context = new Context(baseIri, this._graph);
 
         // Create xsd data types by default.
         for (const dataType of DataType.all()) {
