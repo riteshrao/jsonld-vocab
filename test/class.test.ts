@@ -9,7 +9,7 @@ describe('Class', () => {
     let vocabulary: Vocabulary;
 
     before(async () => {
-        vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+        vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
         vocabulary.context.load('http://example.org/context', testContext);
         await vocabulary.load(testClasses);
     });

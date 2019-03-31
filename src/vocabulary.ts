@@ -30,13 +30,13 @@ export class Vocabulary implements types.Vocabulary {
      * @memberof Vocabulary
      */
     constructor(public readonly baseIri: string, public readonly contextUri: string) {
-        this._context = new Context(baseIri);
         this._graph = new JsonldGraph();
         this._graph.addPrefix('vocab', baseIri);
         this._graph.addPrefix('rdf', Context.RdfNamespace);
         this._graph.addPrefix('rdfs', Context.RdfsNamespace);
         this._graph.addPrefix('xsd', Context.XSDNamesapce);
-        this._graph.addContext(contextUri, {
+        this._context = new Context(baseIri, this._graph);
+        this._context.load(contextUri, {
             [JsonldKeywords.context]: {
                 rdf: Context.RdfNamespace,
                 rdfs: Context.RdfsNamespace,

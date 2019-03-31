@@ -21,7 +21,7 @@ describe('Vocabulary', () => {
 
     describe('.classes', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -41,7 +41,7 @@ describe('Vocabulary', () => {
 
     describe('.instances', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -56,7 +56,7 @@ describe('Vocabulary', () => {
 
     describe('.properties', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -71,7 +71,7 @@ describe('Vocabulary', () => {
 
     describe('.resources', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -84,7 +84,7 @@ describe('Vocabulary', () => {
 
     describe('.createClass', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -127,7 +127,7 @@ describe('Vocabulary', () => {
 
     describe('.createInstance', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -174,7 +174,7 @@ describe('Vocabulary', () => {
 
     describe('.createProperty', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -217,7 +217,7 @@ describe('Vocabulary', () => {
 
     describe('.getInstance', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -254,7 +254,7 @@ describe('Vocabulary', () => {
 
     describe('.getInstancesOf', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -289,7 +289,7 @@ describe('Vocabulary', () => {
 
     describe('.getProperty', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -321,7 +321,7 @@ describe('Vocabulary', () => {
 
     describe('.getResource', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });
@@ -359,7 +359,7 @@ describe('Vocabulary', () => {
 
     describe('.context', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/context');
+            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
             vocabulary.context.load('http://example.org/context', testContext);
             await vocabulary.load(testVocabulary);
         });

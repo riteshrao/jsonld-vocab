@@ -1,5 +1,5 @@
 import Iterable from 'jsiterable';
-import { JsonldKeywords } from 'jsonld-graph';
+import JsonldGraph, { JsonldKeywords } from 'jsonld-graph';
 
 import Errors from './errors';
 import Id from './id';
@@ -68,14 +68,14 @@ export class Context {
     static readonly XSDNamesapce = 'http://www.w3.org/2001/XMLSchema#';
 
     private readonly _terms: Map<string, ContextTerm> = new Map<string, ContextTerm>();
-    private readonly _cache: Map<string, object> = new Map<string, object>();
-
     /**
      * Creates an instance of Context.
      * @param {string} baseIri The base vocabulary IRI of the context.
      * @memberof Context
      */
-    constructor(private readonly baseIri: string) {
+    constructor(
+        private readonly baseIri: string,
+        private readonly graph: JsonldGraph) {
         if (!baseIri) {
             throw new ReferenceError(`Invalid baseIri. baseIri is '${baseIri}'`);
         }
@@ -98,7 +98,7 @@ export class Context {
      * @memberof Context
      */
     get definitions(): Iterable<[string, object]> {
-        return new Iterable(this._cache);
+        return this.graph.contexts;
     }
 
     /**
@@ -144,22 +144,18 @@ export class Context {
             throw new ReferenceError(`Invalid document. document is '${document}'`);
         }
 
-        if (this._cache.has(uri)) {
-            throw new Errors.DuplicateContextError(uri);
-        }
-
         if (!document[JsonldKeywords.context]) {
             throw new Errors.ContextSyntaxError(`Missing ${JsonldKeywords.context} key`);
         }
 
+        this.graph.addContext(uri, document);
         const context = document[JsonldKeywords.context];
         if (context instanceof Array) {
             context.filter(x => typeof x !== 'string').forEach(item => this._parseContextObject(item));
         } else {
             this._parseContextObject(context);
         }
-
-        this._cache.set(uri, document);
+        
     }
 
     /**
