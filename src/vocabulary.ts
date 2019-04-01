@@ -193,10 +193,10 @@ export class Vocabulary implements types.Vocabulary {
      * @template T The instance type.
      * @param {string} id The id of the instance to create.
      * @param {(string | Class)} classTypes The initial class type of the instance.
-     * @returns {(Instance & T)}
+     * @returns {(T)}
      * @memberof Vocabulary
      */
-    createInstance<T = {}>(id: string, ...classTypes: types.ClassReference[]): Instance & T {
+    createInstance<T = Instance>(id: string, ...classTypes: types.ClassReference[]): T {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
@@ -270,7 +270,7 @@ export class Vocabulary implements types.Vocabulary {
      * @returns {Instance}
      * @memberof Vocabulary
      */
-    getInstance<T = {}>(id: string): Instance & T {
+    getInstance<T = Instance>(id: string): T {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
@@ -293,10 +293,10 @@ export class Vocabulary implements types.Vocabulary {
      * @template T
      * @param {types.ClassReference} classRef The id of the class or class instance whose instances are to be retrieved.
      * @param {boolean} descendants True to include all descendant instances of the specifid class.
-     * @returns {(Iterable<Instance & T>)}
+     * @returns {(Iterable<T>)}
      * @memberof Vocabulary
      */
-    getInstancesOf<T = {}>(classRef: types.ClassReference, descendants: boolean = false): Iterable<Instance & T> {
+    getInstancesOf<T = Instance>(classRef: types.ClassReference, descendants: boolean = false): Iterable<T> {
         if (!classRef) {
             throw new ReferenceError(`Invalid classRef. classRef is '${classRef}'`);
         }

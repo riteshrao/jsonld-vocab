@@ -461,6 +461,7 @@ describe('Instance', () => {
             expect([...instance.manages][1]).to.be.instanceOf(Instance);
             expect([...instance.manages].some(x => x.id === 'urn:example.org:employees/testEmployee1')).to.be.true;
             expect([...instance.manages].some(x => x.id === 'urn:example.org:employees/testEmployee2')).to.be.true;
+            expect(instance.manages.get('urn:example.org:employees/testEmployee1')).to.be.ok;
 
             expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(1);
             expect(testEmployee2.getReferrers('Manager/manages').count()).to.equal(1);
@@ -476,10 +477,7 @@ describe('Instance', () => {
     });
 });
 
-interface Entity {
-    '@id': string;
-    '@type': any;
-}
+interface Entity extends Instance { } 
 
 interface Location extends Entity {
     address: string;

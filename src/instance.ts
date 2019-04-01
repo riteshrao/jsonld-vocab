@@ -411,7 +411,7 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
         private readonly vocabulary: types.Vocabulary) {
     }
 
-    *[Symbol.iterator](): Iterator<any> {
+    *[Symbol.iterator](): Iterator<T> {
         if (this.vertex.hasAttribute(Id.expand(this.property.id))) {
             const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
             if (values instanceof Array) {
@@ -423,14 +423,14 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
             }
         } else {
             for (const { toVertex } of this.vertex.getOutgoing(Id.expand(this.property.id))) {
-                const instance = this.vocabulary.getInstance(toVertex.id);
+                const instance = this.vocabulary.getInstance<T>(toVertex.id);
                 if (instance) {
                     yield instance;
                 } else {
                     // @type: @vocab allows for IRI's to point to custom vocabulary instances defined in the document.
                     // If the instance was not found in the vocabulary then its local vocabulary instance in the document.
                     // Construct an instance and return that.
-                    yield InstanceProxy.proxify(new Instance(toVertex, this.vocabulary));
+                    yield InstanceProxy.proxify<T>(new Instance(toVertex, this.vocabulary));
                 }
             }
         }
@@ -475,6 +475,25 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
             this.vertex.setOutgoing(Id.expand(this.property.id), Id.expand(value.id));
         } else {
             this.vertex.addAttributeValue(Id.expand(this.property.id), value);
+        }
+    }
+
+    /**
+     * @description Gets an instance reference by its id.
+     * @param {string} id The id of the instance to get.
+     * @returns {(T)}
+     * @memberof ContainerPropertyValues
+     */
+    get(id: string): T {
+        if (!id) {
+            throw new ReferenceError(`Invalid id. id is '${id}'`);
+        }
+
+        const outgoing = this.vertex.getOutgoing(Id.expand(this.property.id)).first(x => x.toVertex.id === Id.expand(id));
+        if (outgoing) {
+            return InstanceProxy.proxify<T>(new Instance(outgoing.toVertex, this.vocabulary));
+        } else {
+            return null;
         }
     }
 

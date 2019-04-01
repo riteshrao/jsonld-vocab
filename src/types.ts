@@ -36,9 +36,9 @@ export interface Vocabulary {
     readonly resources: Iterable<Resource>;
     createClass(id: string): Class;
     createProperty(id: string): Property;
-    createInstance<T = {}>(id: string, ...classTypes: ClassReference[]): Instance & T;
+    createInstance<T = Instance>(id: string, ...classTypes: ClassReference[]): T;
     getClass(id: string): Class;
-    getInstance(id: string): Instance;
+    getInstance<T = Instance>(id: string): T;
     getProperty(id: string): Property;
     getResource(id: string): Resource;
     hasDataType(id: string): boolean;

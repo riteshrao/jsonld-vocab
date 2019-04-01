@@ -67,10 +67,10 @@ export class Document {
      * @template T
      * @param {ClassReference} classReference The id or class instance for which the instance should be created.
      * @param {string} id The id of the instance to create.
-     * @returns {(Instance & T)}
+     * @returns {(T)}
      * @memberof Document
      */
-    createInstance<T = {}>(classReference: ClassReference, id: string): Instance & T {
+    createInstance<T = {}>(classReference: ClassReference, id: string): T {
         if (!classReference) {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}'`);
         }
@@ -105,10 +105,10 @@ export class Document {
      * @description Gets an instance.
      * @template T
      * @param {string} id The id of the instance to get.
-     * @returns {(Instance & T)}
+     * @returns {(T)}
      * @memberof Document
      */
-    getInstance<T = {}>(id: string): Instance & T {
+    getInstance<T = Instance>(id: string): T {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
@@ -131,10 +131,10 @@ export class Document {
      * @template T
      * @param {ClassReference} classReference The id or class reference to get instances of.
      * @param {boolean} [descendants=false] True to include all instances that are descendants of the specified class, else false. Default is false.
-     * @returns {(Iterable<Instance & T>)}
+     * @returns {(Iterable<T>)}
      * @memberof Document
      */
-    getInstancesOf<T = {}>(classReference: ClassReference, descendants: boolean = false): Iterable<Instance & T> {
+    getInstancesOf<T = Instance>(classReference: ClassReference, descendants: boolean = false): Iterable<T> {
         if (!classReference) {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}`);
         }
