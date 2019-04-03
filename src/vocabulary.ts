@@ -270,7 +270,7 @@ export class Vocabulary implements types.Vocabulary {
      * @returns {Instance}
      * @memberof Vocabulary
      */
-    getInstance<T = Instance>(id: string): T {
+    getInstance<T = any>(id: string): T & Instance {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
@@ -296,7 +296,7 @@ export class Vocabulary implements types.Vocabulary {
      * @returns {(Iterable<T>)}
      * @memberof Vocabulary
      */
-    getInstancesOf<T = Instance>(classRef: types.ClassReference, descendants: boolean = false): Iterable<T> {
+    getInstancesOf<T = any>(classRef: types.ClassReference, descendants: boolean = false): Iterable<T & Instance> {
         if (!classRef) {
             throw new ReferenceError(`Invalid classRef. classRef is '${classRef}'`);
         }

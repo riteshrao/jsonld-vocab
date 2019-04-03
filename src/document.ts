@@ -70,7 +70,7 @@ export class Document {
      * @returns {(T)}
      * @memberof Document
      */
-    createInstance<T = {}>(classReference: ClassReference, id: string): T {
+    createInstance<T = any>(classReference: ClassReference, id: string): T & Instance {
         if (!classReference) {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}'`);
         }
@@ -108,7 +108,7 @@ export class Document {
      * @returns {(T)}
      * @memberof Document
      */
-    getInstance<T = Instance>(id: string): T {
+    getInstance<T = any>(id: string): T & Instance {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
@@ -134,7 +134,7 @@ export class Document {
      * @returns {(Iterable<T>)}
      * @memberof Document
      */
-    getInstancesOf<T = Instance>(classReference: ClassReference, descendants: boolean = false): Iterable<T> {
+    getInstancesOf<T = any>(classReference: ClassReference, descendants: boolean = false): Iterable<T & Instance> {
         if (!classReference) {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}`);
         }

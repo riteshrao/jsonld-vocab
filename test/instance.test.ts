@@ -26,7 +26,7 @@ describe('Instance', () => {
         });
 
         it('should return all classes of an instance', () => {
-            const instance = document.getInstance('urn:example.org:employees/jdoe');
+            const instance = document.getInstance<Employee>('urn:example.org:employees/jdoe');
             expect(instance.classes.count()).to.equal(2);
             expect(instance.classes.some(x => x.id === 'Employee')).to.be.true;
         });
@@ -207,12 +207,12 @@ describe('Instance', () => {
             expect(instance.properties.some(x => x.id === 'Employee/department')).to.be.false;
 
             expect(document
-                .getInstance('urn:example.org:locations/nashua')
+                .getInstance<Location>('urn:example.org:locations/nashua')
                 .referrers
                 .some(x => x.instance.id === 'urn:example.org:employees/janed')).to.be.true;
 
             expect(document
-                .getInstance('urn:example.org:departments/hr')
+                .getInstance<Department>('urn:example.org:departments/hr')
                 .referrers
                 .some(x => x.instance.id === 'urn:example.org:employees/janed')).to.be.false;
         });
@@ -251,7 +251,7 @@ describe('Instance', () => {
         });
 
         it('should make instance type of class', () => {
-            const instance = document.getInstance('urn:example.org:employees/jilld');
+            const instance = document.getInstance<Employee>('urn:example.org:employees/jilld');
             instance.setClass('Contractor');
             expect(instance.classes.count()).to.equal(2);
             expect(instance.classes.some(x => x.id === 'Contractor')).to.be.true;
@@ -417,9 +417,9 @@ describe('Instance', () => {
         });
 
         it('can get, set and delete reference container property', () => {
-            const instance = document.getInstance('urn:example.org:employees/testManager1');
-            const testEmployee1 = document.getInstance('urn:example.org:employees/testEmployee1');
-            const testEmployee2 = document.getInstance('urn:example.org:employees/testEmployee2');
+            const instance = document.getInstance<Manager>('urn:example.org:employees/testManager1');
+            const testEmployee1 = document.getInstance<Employee>('urn:example.org:employees/testEmployee1');
+            const testEmployee2 = document.getInstance<Employee>('urn:example.org:employees/testEmployee2');
             const managesProperty = instance.getProperty('Manager/manages');
 
             managesProperty.value.add(testEmployee1);

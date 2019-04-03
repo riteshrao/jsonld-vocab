@@ -8,7 +8,7 @@ export namespace InstanceProxy {
      * @param {Instance} instance THe instance to proxify.
      * @returns {(T)}
      */
-    export function proxify<T = {}>(instance: Instance): Instance & T {
+    export function proxify<T = any>(instance: Instance): T & Instance {
         Object.defineProperties(instance, {
             '@id': {
                 get: () => {
