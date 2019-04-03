@@ -99,6 +99,16 @@ export class Instance {
     }
 
     /**
+     * @description Gets the metadata of the instance.
+     * @readonly
+     * @type {*}
+     * @memberof Instance
+     */
+    get metadata(): any {
+        return this.vertex.metadata;
+    }
+
+    /**
      * @description Get all instances that reference this instance.
      * @readonly
      * @type {Iterable<Instance>}

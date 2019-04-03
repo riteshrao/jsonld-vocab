@@ -9,6 +9,19 @@ export namespace InstanceProxy {
      * @returns {(T)}
      */
     export function proxify<T = {}>(instance: Instance): Instance & T {
+        Object.defineProperties(instance, {
+            '@id': {
+                get: () => {
+                    return instance.id;
+                }
+            },
+            '@type': {
+                get: () => {
+                    return [...instance.classes.map(x => x.id)]
+                }  
+            }
+        });
+        
         for (const property of instance.properties.filter(x => !!x.term)) {
             Object.defineProperty(instance, property.term, {
                 get: () => {
