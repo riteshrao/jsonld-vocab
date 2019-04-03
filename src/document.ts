@@ -119,7 +119,7 @@ export class Document {
 
         const instanceV = this.graph.getVertex(id);
         if (!instanceV || instanceV.types.count() === 0) {
-            throw new Errors.InstanceNotFoundError(id);
+           return null;
         }
 
         const instance = new Instance(instanceV, this.vocabulary);
