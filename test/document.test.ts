@@ -82,8 +82,8 @@ describe('Document', () => {
             expect(() => document.getInstance('http://example.org/classes/Department/deptA')).to.throw(Errors.InstanceNotFoundError);
         });
 
-        it('should throw not found when instance does not exist', () => {
-            expect(() => document.getInstance('urn:example.org:persons/doesnotexist')).to.throw(Errors.InstanceNotFoundError);
+        it('should return null when instance does not exist', () => {
+            expect(() => document.getInstance('urn:example.org:persons/doesnotexist')).to.be.null;
         });
 
         it('should get instance from document using id', () => {
