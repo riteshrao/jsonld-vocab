@@ -376,15 +376,17 @@ export class InstanceProperty {
             return;
         }
 
-        if ((this.valueType === ValueType.id || this.valueType === ValueType.vocab) && !(value instanceof Instance)) {
+        if ((this.valueType === ValueType.id || this.valueType === ValueType.vocab) && 
+            (!(value instanceof Instance) && !(value instanceof Class))) {
             throw new Errors.InstancePropertyValueError(
                 Id.compact(this.vertex.id),
                 this.property.id,
-                'Value for @id or @vocab properties MUST be a valid Instance');
+                'Value for @id or @vocab properties MUST be a valid Instance or Class reference');
         }
 
-        if (value instanceof Instance) {
-            this.vertex.removeOutgoing(Id.expand(this.property.id));
+        this.vertex.removeOutgoing(Id.expand(this.property.id));
+
+        if (value instanceof Instance || value instanceof Class) {
             this.vertex.setOutgoing(Id.expand(this.property.id), Id.expand(value.id), true);
         } else {
             this.vertex.replaceAttributeValue(Id.expand(this.property.id), value);
