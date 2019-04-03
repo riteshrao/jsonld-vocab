@@ -83,7 +83,7 @@ describe('Document', () => {
         });
 
         it('should return null when instance does not exist', () => {
-            expect(() => document.getInstance('urn:example.org:persons/doesnotexist')).to.be.null;
+            expect(document.getInstance('urn:example.org:persons/doesnotexist')).to.be.null;
         });
 
         it('should get instance from document using id', () => {
