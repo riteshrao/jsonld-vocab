@@ -1,14 +1,13 @@
 import Iterable from 'jsiterable';
-import JsonldGraph from 'jsonld-graph';
+import JsonldGraph, { Vertex } from 'jsonld-graph';
 import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
 
-import { ValueType } from './context';
 import Errors from './errors';
 import Id from './id';
 import Instance from './instance';
 import InstanceProxy from './instanceProxy';
-import { ClassReference, InstanceReference } from './types';
 import Vocabulary from './vocabulary';
+import { ClassReference, InstanceReference } from './types';
 
 /**
  *  Normalizer function used to normalize instances in a document.
@@ -243,10 +242,11 @@ export class Document {
             throw new ReferenceError(`Invalid instanceReference. instanceReference is '${instanceReference}'`);
         }
 
+        const instanceId = typeof instanceReference === 'string' ? instanceReference : instanceReference.id;
         if (!recursive) {
-            this.graph.removeVertex(typeof instanceReference === 'string' ? instanceReference : instanceReference.id);
+            this.graph.removeVertex(instanceId);
         } else {
-            const instance = typeof instanceReference === 'string' ? this.getInstance(instanceReference) : instanceReference;
+            const instance = this.graph.getVertex(instanceId);
             if (!instance) {
                 return;
             }
@@ -264,31 +264,20 @@ export class Document {
         return this.graph.toJson(options);
     }
 
-    private _removeInstanceRecursive(instance: Instance, tracker: Set<string> = new Set<string>()): void {
+    private _removeInstanceRecursive(instance: Vertex, tracker: Set<string> = new Set<string>()): void {
         if (tracker.has(instance.id)) {
             return;
         }
 
         tracker.add(instance.id);
-        for (const property of instance.properties.filter(x => x.valueType === ValueType.id || x.valueType === ValueType.vocab)) {
-            if (property.container) {
-                const neighbors: Instance[] = [...property.value];
-                property.value.clear();
-                for (const neighbor of neighbors) {
-                    if (neighbor.referrers.count() === 0) {
-                        this._removeInstanceRecursive(neighbor, tracker);
-                    }
-                }
-            } else {
-                const neighbor = property.value as Instance;
-                property.value = null; // Delete the value first
-                if (neighbor && neighbor.referrers.count() === 0) {
-                    this._removeInstanceRecursive(neighbor, tracker);
-                }
+        for (const outgoing of instance.getOutgoing().items()) {
+            outgoing.toVertex.removeIncoming(outgoing.label, instance.id);
+            if (outgoing.toVertex.getIncoming().count() === 0) {
+                this._removeInstanceRecursive(outgoing.toVertex);
             }
         }
 
-        this.graph.removeVertex(instance.id);
+        this.graph.removeVertex(instance);
     }
 }
 
