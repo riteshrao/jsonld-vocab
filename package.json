@@ -39,7 +39,7 @@
     "ts-node": "^8.0.3",
     "tslint": "^5.14.0",
     "tslint-no-unused-expression-chai": "^0.1.4",
-    "typescript": "^3.3.3333"
+    "typescript": "^3.4.1"
   },
   "dependencies": {
     "jsiterable": "^1.1.2",
