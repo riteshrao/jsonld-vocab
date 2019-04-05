@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "jsiterable": "^1.1.2",
-    "jsonld-graph": "^1.4.1",
+    "jsonld-graph": "^1.4.2",
     "uri-js": "^4.2.2"
   },
   "nyc": {
