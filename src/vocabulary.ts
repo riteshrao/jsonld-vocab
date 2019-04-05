@@ -265,6 +265,34 @@ export class Vocabulary implements types.Vocabulary {
     }
 
     /**
+     * @description Gets an entity from the vocabulary that can either be a class, property or instance.
+     * @param {string} id The id of the entity to get.
+     * @returns {(Resource | Instance)}
+     * @memberof Vocabulary
+     */
+    getEntity(id: string): Resource | Instance {
+        if (!id) {
+            throw new ReferenceError(`Invalid id. id is '${id}'`);
+        }
+
+        const expandedId = Id.expand(id);
+        const instanceV = this._graph.getVertex(expandedId);
+        if (!instanceV) {
+            return null;
+        }
+
+        if (instanceV.isType('rdfs:Class')) {
+            return new Class(instanceV, this);
+        }
+
+        if (instanceV.isType('rdfs:Property')) {
+            return new Property(instanceV, this);
+        }
+
+        return new Instance(instanceV, this);
+    }
+
+    /**
      * @description Gets a instance defined in the vocabulary.
      * @param {string} id The id of the instance to get.
      * @returns {Instance}

@@ -355,7 +355,7 @@ export class InstanceProperty {
             } else {
                 const outgoingInstance = this.vertex.getOutgoing(Id.expand(this.property.id)).first();
                 if (outgoingInstance) {
-                    const instance = this.vocabulary.getResource(Id.expand(outgoingInstance.toVertex.id));
+                    const instance = this.vocabulary.getEntity(Id.expand(outgoingInstance.toVertex.id));
                     if (instance) {
                         return instance;
                     } else {

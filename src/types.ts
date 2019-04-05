@@ -38,6 +38,7 @@ export interface Vocabulary {
     createProperty(id: string): Property;
     createInstance<T = Instance>(id: string, ...classTypes: ClassReference[]): T;
     getClass(id: string): Class;
+    getEntity(id: string): Resource | Instance;
     getInstance<T = Instance>(id: string): T;
     getProperty(id: string): Property;
     getResource(id: string): Resource;
