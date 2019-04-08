@@ -155,7 +155,6 @@ export class Context {
         } else {
             this._parseContextObject(context);
         }
-        
     }
 
     /**
@@ -185,13 +184,15 @@ export class Context {
 
         for (const term of Object.getOwnPropertyNames(context).filter(x => !x.startsWith('@'))) {
             const value = typeof context[term] === 'string' ? { [JsonldKeywords.id]: context[term] } : context[term];
-            if (!value[JsonldKeywords.id]) {
+            if (!value['@reverse'] && !value[JsonldKeywords.id]) {
                 throw new Errors.ContextSyntaxError(`Invalid context term ${term}. ${JsonldKeywords.id} not specified for term`);
             }
 
-            const definition = this.isDefined(term) ? this.getTerm(term) : this._setTerm(term, value[JsonldKeywords.id]);
-            definition.container = value['@container'];
-            definition.type = value[JsonldKeywords.type];
+            if (!value['@reverse']) {
+                const definition = this.isDefined(term) ? this.getTerm(term) : this._setTerm(term, value[JsonldKeywords.id]);
+                definition.container = value['@container'];
+                definition.type = value[JsonldKeywords.type];
+            }
         }
     }
 
