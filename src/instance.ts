@@ -25,7 +25,7 @@ export class Instance {
      * @memberof Instance
      */
     constructor(
-        private readonly vertex: Vertex,
+        public readonly vertex: Vertex,
         public readonly vocabulary: types.Vocabulary) {
 
         if (!vertex) {
@@ -386,8 +386,7 @@ export class InstanceProperty {
             return;
         }
 
-        if ((this.valueType === ValueType.id || this.valueType === ValueType.vocab) && 
-            (!(value instanceof Instance) && !(value instanceof Class))) {
+        if ((this.valueType === ValueType.id || this.valueType === ValueType.vocab) && (!(value instanceof Instance) && !(value instanceof Class))) {
             throw new Errors.InstancePropertyValueError(
                 Id.compact(this.vertex.id),
                 this.property.id,
