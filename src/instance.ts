@@ -509,6 +509,31 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
     }
 
     /**
+     * @description Checks if the container property contains an instance optionally of a specified type.
+     * @param {string} id The id of the instance to check.
+     * @param {(string | Class)} [classType]
+     * @returns {boolean}
+     * @memberof ContainerPropertyValues
+     */
+    has(id: string, classType?: string | Class): boolean {
+        if (!id) {
+            throw new ReferenceError(`Invalid id. id is '${id}'`);
+        }
+
+        const outgoing = this.vertex.getOutgoing(Id.expand(this.property.id)).first(x => x.toVertex.id === Id.expand(id));
+        if (!outgoing) {
+            return false;
+        }
+
+        if (classType) {
+            const classId = typeof classType === 'string' ? classType : classType.id;
+            return outgoing.toVertex.isType(Id.expand(classId));
+        } else {
+            return true;
+        }
+    }
+
+    /**
      * @description Removes a value from the container property.
      * @param {any} value The value to remove.
      * @memberof ContainerPropertyValues

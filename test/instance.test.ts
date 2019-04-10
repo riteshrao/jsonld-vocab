@@ -428,8 +428,9 @@ describe('Instance', () => {
             expect(managesProperty.value.count).to.equal(2);
             expect([...managesProperty.value][0]).to.be.instanceOf(Instance);
             expect([...managesProperty.value][1]).to.be.instanceOf(Instance);
-            expect([...managesProperty.value].some(x => x.id === 'urn:example.org:employees/testEmployee1')).to.be.true;
-            expect([...managesProperty.value].some(x => x.id === 'urn:example.org:employees/testEmployee2')).to.be.true;
+
+            expect(managesProperty.value.has('urn:example.org:employees/testEmployee1')).to.be.true;
+            expect(managesProperty.value.has('urn:example.org:employees/testEmployee2')).to.be.true;
 
             expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(1);
             expect(testEmployee2.getReferrers('Manager/manages').count()).to.equal(1);
@@ -459,9 +460,13 @@ describe('Instance', () => {
             expect(instance.manages.count).to.equal(2);
             expect([...instance.manages][0]).to.be.instanceOf(Instance);
             expect([...instance.manages][1]).to.be.instanceOf(Instance);
-            expect([...instance.manages].some(x => x.id === 'urn:example.org:employees/testEmployee1')).to.be.true;
-            expect([...instance.manages].some(x => x.id === 'urn:example.org:employees/testEmployee2')).to.be.true;
+
+            expect(instance.manages.has('urn:example.org:employees/testEmployee1')).to.be.true;
+            expect(instance.manages.has('urn:example.org:employees/testEmployee2')).to.be.true;
+
+
             expect(instance.manages.get('urn:example.org:employees/testEmployee1')).to.be.ok;
+            expect(instance.manages.get('urn:example.org:employees/testEmployee2')).to.be.ok;
 
             expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(1);
             expect(testEmployee2.getReferrers('Manager/manages').count()).to.equal(1);
@@ -477,7 +482,7 @@ describe('Instance', () => {
     });
 });
 
-interface Entity extends Instance { } 
+interface Entity extends Instance { }
 
 interface Location extends Entity {
     address: string;
