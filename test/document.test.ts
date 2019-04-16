@@ -83,7 +83,7 @@ describe('Document', () => {
         });
 
         it('should return null when instance does not exist', () => {
-            expect(document.getInstance('urn:example.org:persons/doesnotexist')).to.be.null;
+            expect(document.getInstance('urn:example.org:persons/doesnotexist')).to.be.undefined;
         });
 
         it('should get instance from document using id', () => {
@@ -194,7 +194,6 @@ describe('Document', () => {
             });
 
             await document.load(testInstances);
-            document.normalize();
         });
 
         it('should have normalized blank type nodes', () => {

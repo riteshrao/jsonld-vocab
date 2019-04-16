@@ -8,7 +8,6 @@ import * as types from './types';
 import Errors from './errors';
 import Class from './class';
 import Id from './id';
-import InstanceProxy from './instanceProxy';
 import Property from './property';
 import { ValueType, ContainerType } from './context';
 
@@ -18,6 +17,9 @@ import { ValueType, ContainerType } from './context';
  * @class Instance
  */
 export class Instance {
+    private readonly _classes = new Map<string, Class>();
+    private readonly _properties = new Map<string, InstanceProperty>();
+
     /**
      * Creates an instance of Instance.
      * @param {Vertex} vertex The vertex backing the instance.
@@ -26,7 +28,8 @@ export class Instance {
      */
     constructor(
         public readonly vertex: Vertex,
-        public readonly vocabulary: types.Vocabulary) {
+        public readonly vocabulary: types.Vocabulary,
+        private readonly instanceProvider: types.InstanceProvider) {
 
         if (!vertex) {
             throw new ReferenceError(`Invalid vertex. vertex is ${vertex}`);
@@ -34,6 +37,10 @@ export class Instance {
 
         if (!vocabulary) {
             throw new ReferenceError(`Invalid vocabulary. vocabulary is ${vocabulary}`);
+        }
+
+        if (!instanceProvider) {
+            throw new ReferenceError(`Invalid instanceProvider. instanceProvider is ${instanceProvider}`);
         }
     }
 
@@ -74,7 +81,7 @@ export class Instance {
      * @memberof Instance
      */
     get classes(): Iterable<Class> {
-        return this.vertex.types.map(typeV => this.vocabulary.getClass(typeV.id));
+        return new Iterable(this._classes).map(x => x[1]);
     }
 
     /**
@@ -84,18 +91,7 @@ export class Instance {
      * @memberof Instance
      */
     get properties(): Iterable<InstanceProperty> {
-        const _that = this;
-        return new Iterable((function* getInstanceProperties() {
-            const tracker = new Set<string>();
-            for (const classType of _that.classes) {
-                for (const property of classType.properties) {
-                    if (!tracker.has(property.id)) {
-                        tracker.add(property.id);
-                        yield new InstanceProperty(_that.vertex, property, _that.vocabulary);
-                    }
-                }
-            }
-        })());
+        return new Iterable(this._properties).map(x => x[1]);
     }
 
     /**
@@ -120,7 +116,7 @@ export class Instance {
             .map((incoming) => {
                 return {
                     property: this.vocabulary.getProperty(incoming.label),
-                    instance: InstanceProxy.proxify(new Instance(incoming.fromVertex, this.vocabulary))
+                    instance: this.instanceProvider.getInstance(incoming.fromVertex.id)
                 };
             });
     }
@@ -136,19 +132,7 @@ export class Instance {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        let property: Property;
-        for (const classType of this.classes) {
-            property = classType.getProperty(id);
-            if (property) {
-                break;
-            }
-        }
-
-        if (!property) {
-            return null;
-        } else {
-            return new InstanceProperty(this.vertex, property, this.vocabulary);
-        }
+        return this._properties.get(Id.expand(id, true));
     }
 
     /**
@@ -167,8 +151,23 @@ export class Instance {
             throw new Errors.ResourceNotFoundError(propertyReference as string, 'Property');
         }
 
-        return this.vertex.getIncoming(Id.expand(property.id))
-            .map(({ fromVertex }) => InstanceProxy.proxify(new Instance(fromVertex, this.vocabulary)));
+        return this.vertex
+            .getIncoming(Id.expand(property.id))
+            .map(({ fromVertex }) => this.instanceProvider.getInstance(fromVertex.id));
+    }
+
+    /**
+     * @description Checks of a property exists on the instance.
+     * @param {string} id The id of the property to check.
+     * @returns
+     * @memberof Instance
+     */
+    hasProperty(id: string) {
+        if (!id) {
+            throw new ReferenceError(`Invalid id. id is '${id}'`);
+        }
+
+        return this._properties.has(Id.expand(id));
     }
 
     /**
@@ -183,7 +182,7 @@ export class Instance {
         }
 
         const classId = typeof classReference === 'string' ? Id.expand(classReference) : Id.expand(classReference.id);
-        return this.vertex.isType(classId) || this.classes.map(x => x.isDescendantOf(classId)).some(x => x);
+        return this._classes.has(classId) || this.classes.map(x => x.isDescendantOf(classId)).some(x => x);
     }
 
     /**
@@ -215,14 +214,13 @@ export class Instance {
 
         // Remove all property values and outgoing references for class properties.
         this.vertex.removeType(Id.expand(classType.id));
-        const currentProps = [...this.properties];
-        for (const property of classType.properties) {
-            if (!currentProps.some(x => x.id === property.id)) {
-                if (property.valueType === ValueType.id || property.valueType === ValueType.vocab) {
-                    this.vertex.removeOutgoing(Id.expand(property.id));
-                } else {
-                    this.vertex.deleteAttribute(Id.expand(property.id));
-                }
+        this._classes.delete(Id.expand(classType.id));
+        for (const classProperty of classType.properties) {
+            const propertyId = Id.expand(classProperty.id);
+            if (!this.classes.some(x => x.hasProperty(classProperty))) {
+                this.vertex.removeOutgoing(propertyId);
+                this.vertex.deleteAttribute(propertyId);
+                this._properties.delete(propertyId);
             }
         }
 
@@ -243,6 +241,7 @@ export class Instance {
         if (!classType) {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
+
         if (!(classType instanceof Class)) {
             throw new Errors.ResourceTypeMismatchError(classReference as string, 'Class', '');
         }
@@ -252,6 +251,14 @@ export class Instance {
         }
 
         this.vertex.setType(Id.expand(classType.id));
+        this._classes.set(Id.expand(classType.id), classType);
+        for (const property of classType.properties) {
+            const propertyId = Id.expand(property.id);
+            if (!this._properties.has(propertyId)) {
+                const instanceProperty = new InstanceProperty(this.vertex, property, this.vocabulary, this.instanceProvider);
+                this._properties.set(propertyId, instanceProperty);
+            }
+        }
         return this;
     }
 
@@ -275,7 +282,8 @@ export class InstanceProperty {
     constructor(
         private readonly vertex: Vertex,
         private readonly property: Property,
-        private readonly vocabulary: types.Vocabulary) {
+        private readonly vocabulary: types.Vocabulary,
+        private readonly instanceProvider: types.InstanceProvider) {
 
         if (!vertex) {
             throw new ReferenceError(`Invalid vertex. veretx is '${vertex}'`);
@@ -348,7 +356,7 @@ export class InstanceProperty {
      */
     get value(): any {
         if (this.container) {
-            return new ContainerPropertyValues(this.vertex, this.property, this.vocabulary);
+            return new ContainerPropertyValues(this.vertex, this.property, this.vocabulary, this.instanceProvider);
         } else {
             if (this.vertex.hasAttribute(Id.expand(this.property.id))) {
                 return this.vertex.getAttributeValue(Id.expand(this.property.id));
@@ -359,7 +367,7 @@ export class InstanceProperty {
                     if (instance) {
                         return instance;
                     } else {
-                        return InstanceProxy.proxify(new Instance(outgoingInstance.toVertex, this.vocabulary));
+                        return this.instanceProvider.getInstance(outgoingInstance.toVertex.id);
                     }
                 } else {
                     return undefined;
@@ -419,7 +427,8 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
     constructor(
         private readonly vertex: Vertex,
         private readonly property: Property,
-        private readonly vocabulary: types.Vocabulary) {
+        private readonly vocabulary: types.Vocabulary,
+        private readonly instanceProvider: types.InstanceProvider) {
     }
 
     *[Symbol.iterator](): Iterator<T> {
@@ -441,7 +450,9 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
                     // @type: @vocab allows for IRI's to point to custom vocabulary instances defined in the document.
                     // If the instance was not found in the vocabulary then its local vocabulary instance in the document.
                     // Construct an instance and return that.
-                    yield InstanceProxy.proxify<T>(new Instance(toVertex, this.vocabulary));
+                    console.log(toVertex.id);
+                    console.log(this.instanceProvider);
+                    yield this.instanceProvider.getInstance<T>(toVertex.id);
                 }
             }
         }
@@ -502,7 +513,7 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
 
         const outgoing = this.vertex.getOutgoing(Id.expand(this.property.id)).first(x => x.toVertex.id === Id.expand(id));
         if (outgoing) {
-            return InstanceProxy.proxify<T>(new Instance(outgoing.toVertex, this.vocabulary));
+            return this.instanceProvider.getInstance(outgoing.toVertex.id);
         } else {
             return null;
         }

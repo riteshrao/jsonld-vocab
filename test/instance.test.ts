@@ -240,7 +240,7 @@ describe('Instance', () => {
 
         it('should throw when setting class to a non-class type', () => {
             const instance = document.getInstance('urn:example.org:employees/jilld');
-            expect(() => instance.setClass('Person/firstName')).to.throw(Errors.ResourceTypeMismatchError);
+            expect(() => instance.setClass('Person/firstName')).to.throw(Errors.ResourceNotFoundError);
         });
 
         it('should do nothing when instance is already type of class', () => {

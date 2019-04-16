@@ -1,7 +1,6 @@
 import Iterable from 'jsiterable';
 import { Vertex } from 'jsonld-graph';
 
-
 import { ValueType, ContainerType } from './context';
 import DataType from './dataType';
 import Errors from './errors';

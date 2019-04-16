@@ -46,7 +46,7 @@ describe('Vocabulary', () => {
             await vocabulary.load(testVocabulary);
         });
 
-        it('should get all intances in the vocabulary', () => {
+        it('should get all instances in the vocabulary', () => {
             const instances = [...vocabulary.instances];
             expect(instances.length).to.equal(4);
             expect(instances.some(x => x.id === 'Department/deptA')).to.be.true;
@@ -228,20 +228,20 @@ describe('Vocabulary', () => {
             expect(() => vocabulary.getInstance('')).to.throw(ReferenceError);
         });
 
-        it('should throw when class id is specified', () => {
-            expect(() => vocabulary.getInstance('Person')).to.throw(Errors.InstanceTypeMismatchError);
+        it('should return undefined when class id is specified', () => {
+            expect(vocabulary.getInstance('Person')).to.be.undefined;
         });
 
-        it('should throw when property id is specified', () => {
-            expect(() => vocabulary.getInstance('Person/firstName')).to.throw(Errors.InstanceTypeMismatchError);
+        it('should return undefined when property id is specified', () => {
+            expect(vocabulary.getInstance('Person/firstName')).to.be.undefined;
         });
 
-        it('should throw when data type id is specified', () => {
-            expect(() => vocabulary.getInstance('xsd:string')).to.throw(Errors.InstanceTypeMismatchError);
+        it('should return undefined when data type id is specified', () => {
+            expect(vocabulary.getInstance('xsd:string')).to.be.undefined;
         });
 
-        it('should return null when instance doesn not exist', () => {
-            expect(vocabulary.getInstance('DoesNotExist')).to.be.null;
+        it('should return undefined when instance does not not exist', () => {
+            expect(vocabulary.getInstance('DoesNotExist')).to.be.undefined;
         });
 
         it('should return instance from vocabulary', () => {
@@ -372,7 +372,7 @@ describe('Vocabulary', () => {
                         test: 'Test/Term'
                     }
                 ]
-            })
+            });
         });
     });
 });

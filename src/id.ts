@@ -18,7 +18,8 @@ export namespace Id {
         }
 
         if (!id.startsWith('xsd:') && validate) {
-            validateResourceId(id);
+            const idPart = id.startsWith('vocab:') ? id.replace('vocab:', '') : id;
+            validateResourceId(idPart);
         }
 
         const parsed = urijs.parse(id, { iri: true });

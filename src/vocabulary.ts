@@ -22,6 +22,9 @@ import Resource from './resource';
 export class Vocabulary implements types.Vocabulary {
     private readonly _context: Context;
     private readonly _graph: JsonldGraph;
+    private readonly _classes = new Map<string, Class>();
+    private readonly _properties = new Map<string, Property>();
+    private readonly _instances = new Map<string, Instance & any>();
 
     /**
      * Creates an instance of Vocabulary.
@@ -117,14 +120,7 @@ export class Vocabulary implements types.Vocabulary {
      * @memberof Vocabulary
      */
     get classes(): Iterable<Class> {
-        const classTypeV = this._graph.getVertex('rdfs:Class');
-        if (!classTypeV) {
-            return new Iterable([]);
-        }
-
-        return classTypeV
-            .getIncoming(JsonldKeywords.type)
-            .map(edge => new Class(edge.fromVertex, this));
+        return new Iterable(this._classes).map(x => x[1]);
     }
 
     /**
@@ -143,10 +139,8 @@ export class Vocabulary implements types.Vocabulary {
      * @type {(Instance & any)}
      * @memberof Vocabulary
      */
-    get instances(): Instance & any {
-        return this.graph
-            .getVertices(x => x.types.count() > 0 && !x.isType('rdfs:Class') && !x.isType('rdf:Property'))
-            .map(vertex => InstanceProxy.proxify(new Instance(vertex, this)));
+    get instances(): Iterable<Instance> {
+        return new Iterable(this._instances).map(x => x[1]);
     }
 
     /**
@@ -156,14 +150,7 @@ export class Vocabulary implements types.Vocabulary {
      * @memberof Vocabulary
      */
     get properties(): Iterable<Property> {
-        const propertyTypeV = this._graph.getVertex('rdf:Property');
-        if (!propertyTypeV) {
-            return new Iterable([]);
-        }
-
-        return propertyTypeV
-            .getIncoming(JsonldKeywords.type)
-            .map(edge => new Property(edge.fromVertex, this));
+        return new Iterable(this._properties).map(x => x[1]);
     }
 
     /**
@@ -173,9 +160,16 @@ export class Vocabulary implements types.Vocabulary {
      * @memberof Vocabulary
      */
     get resources(): Iterable<Resource> {
-        return this.graph
-            .getVertices(vertex => vertex.isType('rdfs:Class') || vertex.isType('rdf:Property'))
-            .map<Resource>(vertex => this._createResource(vertex));
+        const _that = this;
+        return new Iterable((function* resourcesIterable() {
+            for (const [, classType] of _that._classes) {
+                yield classType;
+            }
+
+            for (const [, property] of _that._properties) {
+                yield property;
+            }
+        })());
     }
 
     /**
@@ -185,7 +179,18 @@ export class Vocabulary implements types.Vocabulary {
      * @memberof Vocabulary
      */
     createClass(id: string): Class {
-        return Class.create(id, this);
+        if (!id) {
+            throw new ReferenceError(`Invalid id. id is '${id}'`);
+        }
+
+        const classId = Id.expand(id);
+        if (this._classes.has(classId)) {
+            throw new Errors.DuplicateResourceError(id);
+        }
+
+        const classType = Class.create(classId, this);
+        this._classes.set(classId, classType);
+        return classType;
     }
 
     /**
@@ -199,6 +204,11 @@ export class Vocabulary implements types.Vocabulary {
     createInstance<T = Instance>(id: string, ...classTypes: types.ClassReference[]): T {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
+        }
+
+        const instanceId = Id.expand(id, true);
+        if (this._instances.has(instanceId)) {
+            throw new Errors.DuplicateInstanceError(id);
         }
 
         if (!classTypes || classTypes.length === 0) {
@@ -220,14 +230,14 @@ export class Vocabulary implements types.Vocabulary {
             classRefs.push(classRef);
         }
 
-        const normalizedId = Id.expand(id, true);
-        const instanceV = this.graph.createVertex(normalizedId);
-        const instance = new Instance(instanceV, this);
+        const instanceV = this.graph.createVertex(instanceId);
+        const instance = InstanceProxy.proxify<T>(new Instance(instanceV, this, this));
         for (const classRef of classRefs) {
             instance.setClass(classRef);
         }
 
-        return InstanceProxy.proxify<T>(instance);
+        this._instances.set(instanceId, instance);
+        return instance;
     }
 
     /**
@@ -237,7 +247,18 @@ export class Vocabulary implements types.Vocabulary {
      * @memberof Vocabulary
      */
     createProperty(id: string): Property {
-        return Property.create(id, this);
+        if (!id) {
+            throw new ReferenceError(`Invalid id. id is '${id}'`);
+        }
+
+        const propertyId = Id.expand(id);
+        if (this._properties.has(propertyId)) {
+            throw new Errors.DuplicateResourceError(id);
+        }
+
+        const property = Property.create(id, this);
+        this._properties.set(propertyId, property);
+        return property;
     }
 
     /**
@@ -251,17 +272,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const expandedId = Id.expand(id);
-        const classV = this._graph.getVertex(expandedId);
-        if (!classV) {
-            return null;
-        }
-
-        if (!classV.isType('rdfs:Class')) {
-            throw new Errors.ResourceTypeMismatchError(id, 'Class', classV.types.map(x => Id.compact(x.id)).items().join(','));
-        }
-
-        return new Class(classV, this);
+        return this._classes.get(Id.expand(id));
     }
 
     /**
@@ -275,21 +286,10 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const expandedId = Id.expand(id);
-        const instanceV = this._graph.getVertex(expandedId);
-        if (!instanceV) {
-            return null;
-        }
-
-        if (instanceV.isType('rdfs:Class')) {
-            return new Class(instanceV, this);
-        }
-
-        if (instanceV.isType('rdfs:Property')) {
-            return new Property(instanceV, this);
-        }
-
-        return new Instance(instanceV, this);
+        const entityId = Id.expand(id);
+        return this._classes.get(entityId) ||
+            this._properties.get(entityId) ||
+            this._instances.get(entityId);
     }
 
     /**
@@ -303,24 +303,15 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const expandedId = Id.expand(id);
-        const instanceV = this._graph.getVertex(expandedId);
-        if (!instanceV) {
-            return null;
-        }
-
-        if (instanceV.types.count() === 0 || instanceV.isType('rdfs:Class') || instanceV.isType('rdf:Property')) {
-            throw new Errors.InstanceTypeMismatchError(id);
-        }
-
-        return InstanceProxy.proxify<T>(new Instance(instanceV, this));
+        const instanceId = Id.expand(id);
+        return this._instances.get(instanceId);
     }
 
     /**
      * @description Gets instances of a specific class.
      * @template T
      * @param {types.ClassReference} classRef The id of the class or class instance whose instances are to be retrieved.
-     * @param {boolean} descendants True to include all descendant instances of the specifid class.
+     * @param {boolean} descendants True to include all descendant instances of the specified class.
      * @returns {(Iterable<T>)}
      * @memberof Vocabulary
      */
@@ -336,9 +327,7 @@ export class Vocabulary implements types.Vocabulary {
 
         const classV = this.graph.getVertex(Id.expand(classType.id));
         if (!descendants) {
-            return classV
-                .instances
-                .map(instanceV => InstanceProxy.proxify<T>(new Instance(instanceV, this)));
+            return classV.instances.map(instanceV => this._instances.get(Id.expand(instanceV.id)));
         } else {
             const _that = this;
             return new Iterable((function* getDesendantInstances() {
@@ -347,7 +336,7 @@ export class Vocabulary implements types.Vocabulary {
                 for (const instanceV of classV.instances) {
                     if (!tracker.has(instanceV.id)) {
                         tracker.add(instanceV.id);
-                        yield InstanceProxy.proxify<T>(new Instance(instanceV, _that));
+                        yield _that._instances.get(Id.expand(instanceV.id));
                     }
                 }
 
@@ -357,7 +346,7 @@ export class Vocabulary implements types.Vocabulary {
                         for (const instanceV of descendantV.instances) {
                             if (!tracker.has(instanceV.id)) {
                                 tracker.add(instanceV.id);
-                                yield InstanceProxy.proxify<T>(new Instance(instanceV, _that));
+                                yield _that._instances.get(Id.expand(instanceV.id));
                             }
                         }
                     }
@@ -468,16 +457,51 @@ export class Vocabulary implements types.Vocabulary {
 
     /**
      * @description Loads a vocabulary definition.
-     * @param {object} definition The definition to load.
+     * @param {object[]} definitions The definitions to load
      * @returns {Promise<void>}
      * @memberof Vocabulary
      */
-    load(definition: object): Promise<void> {
-        if (!definition) {
-            throw new ReferenceError(`Invalid definition. definition is '${definition}'`);
+    async load(...definitions: object[]): Promise<void> {
+        if (!definitions || definitions.length === 0) {
+            throw new ReferenceError(`Invalid definitions. One or more definitions to load expected.`);
         }
 
-        return this._graph.load(definition, [this.contextUri], this.baseIri);
+        const vertexIds = await this._graph.load(definitions, [this.contextUri], this.baseIri);
+        const classes: Vertex[] = [];
+        const properties: Vertex[] = [];
+        const instances: Vertex[] = [];
+
+        // Process all created vertices and group them based on type.
+        for (const vertexId of vertexIds) {
+            const vertex = this._graph.getVertex(vertexId);
+            if (vertex.isType('rdfs:Class') && !this._classes.has(vertexId)) {
+                classes.push(vertex);
+            } else if (vertex.isType('rdf:Property') && !this._properties.has(vertexId)) {
+                properties.push(vertex);
+            } else if (!this._instances.has(vertexId)) {
+                instances.push(vertex);
+            }
+        }
+
+        // First load all properties up so that class property caching works correctly.
+        for (const propertyV of properties) {
+            this._properties.set(propertyV.id, new Property(propertyV, this));
+        }
+
+        // Load up all classes so that all instance class caching works correctly.
+        for (const classV of classes) {
+            this._classes.set(classV.id, new Class(classV, this));
+        }
+
+        // Load up all instances.
+        for (const instanceV of instances) {
+            const instance = new Instance(instanceV, this, this);
+            for (const type of instanceV.types) {
+                instance.setClass(this._classes.get(Id.expand(type.id)));
+            }
+
+            this._instances.set(instanceV.id, InstanceProxy.proxify(instance));
+        }
     }
 
     /**
