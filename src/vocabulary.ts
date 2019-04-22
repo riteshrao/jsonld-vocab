@@ -478,7 +478,7 @@ export class Vocabulary implements types.Vocabulary {
                 classes.push(vertex);
             } else if (vertex.isType('rdf:Property') && !this._properties.has(vertexId)) {
                 properties.push(vertex);
-            } else if (!this._instances.has(vertexId)) {
+            } else if (vertex.types.count() > 0 && !this._instances.has(vertexId)) {
                 instances.push(vertex);
             }
         }

@@ -450,9 +450,7 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
                     // @type: @vocab allows for IRI's to point to custom vocabulary instances defined in the document.
                     // If the instance was not found in the vocabulary then its local vocabulary instance in the document.
                     // Construct an instance and return that.
-                    console.log(toVertex.id);
-                    console.log(this.instanceProvider);
-                    yield this.instanceProvider.getInstance<T>(toVertex.id);
+                   yield this.instanceProvider.getInstance<T>(toVertex.id);
                 }
             }
         }
