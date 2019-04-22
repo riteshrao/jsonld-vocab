@@ -10,8 +10,7 @@ describe('Instance', () => {
 
     let vocabulary: Vocabulary;
 
-
-    beforeEach(async () => {
+    before(async () => {
         vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
         vocabulary.context.load('http://example.org/context', testContext);
         await vocabulary.load(testClasses);

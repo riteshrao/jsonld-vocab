@@ -1,0 +1,67 @@
+{
+    "locations": {
+        "@context": "http://example.org/context",
+        "@graph": [
+            {
+                "@id": "urn:example.org:locations/scranton",
+                "@type": "Location",
+                "address": "Scranton, PA"
+            },
+            {
+                "@id": "urn:example.org:locations/nashua",
+                "@type": "Location",
+                "address": "Nashua, NH"
+            }
+        ]
+    },
+    "departments": {
+        "@context": "http://example.org/context",
+        "@graph": [
+            {
+                "@id": "urn:example.org:departments/finance",
+                "@type": "Department",
+                "name": "Finance",
+                "deptLocation": "urn:example.org:locations/nashua"
+            },
+            {
+                "@id": "urn:example.org:departments/hr",
+                "@type": "Department",
+                "name": "Human Resources",
+                "deptLocation": "urn:example.org:locations/scranton"
+            }
+        ]
+    },
+    "employees": {
+        "@context": "http://example.org/context",
+        "@graph": [
+            {
+            "@id": "urn:example.org:employees/jdoe",
+            "@type": ["Employee", "Manager"],
+            "firstName": "John",
+            "lastName": "Doe",
+            "level": 1
+        },
+        {
+            "@id": "urn:example.org:employees/jilld",
+            "@type": "Employee",
+            "firstName": "Jill",
+            "lastName": "Doe",
+            "location": "urn:example.org:locations/nashua",
+            "department": "urn:example.org:departments/finance",
+            "manager": "urn:example.org:employees/janed"
+        },
+        {
+            "@id": "urn:example.org:employees/janed",
+            "@type": ["Contractor", "Manager"],
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "location": "urn:example.org:locations/nashua",
+            "department": "urn:example.org:departments/hr",
+            "project": [
+                { "projectName": "projectA" },
+                { "projectName": "projectB" }
+            ]
+        }
+        ]
+    }
+}
