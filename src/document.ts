@@ -118,7 +118,7 @@ export class Document {
 
         const instanceV = this.graph.getVertex(id);
         if (!instanceV || instanceV.types.count() === 0) {
-           return null;
+            return null;
         }
 
         const instance = new Instance(instanceV, this.vocabulary);
@@ -145,9 +145,14 @@ export class Document {
 
         const classV = this.graph.getVertex(Id.expand(classType.id));
         if (!descendants) {
-            return classV
-                .instances
-                .map(vertex => InstanceProxy.proxify<T>(new Instance(vertex, this.vocabulary)));
+            if (!classV) {
+                return Iterable.empty();
+            } else {
+                return classV
+                    .instances
+                    .map(vertex => InstanceProxy.proxify<T>(new Instance(vertex, this.vocabulary)));
+            }
+
         } else {
             const _that = this;
             return new Iterable((function* getDescendantInstances() {
