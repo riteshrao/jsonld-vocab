@@ -150,9 +150,13 @@ export class Document {
 
         const classV = this._graph.getVertex(Id.expand(classType.id));
         if (!descendants) {
-            return classV
-                .instances
-                .map(vertex => this._instances.get(vertex.id));
+            if (!classV) {
+                return Iterable.empty();
+            } else {
+                return classV
+                    .instances
+                    .map(vertex => this._instances.get(vertex.id));
+            }
         } else {
             const _that = this;
             return new Iterable((function* getDescendantInstances() {
