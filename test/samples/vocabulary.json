@@ -176,6 +176,10 @@
         {
             "@id": "Manager/managerA",
             "@type": "Manager"
+        },
+        {
+            "@id": "Manager/managerB",
+            "@type": ["Employee", "Manager"]
         }
     ]
 }

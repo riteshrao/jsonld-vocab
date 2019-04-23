@@ -32,7 +32,7 @@ export namespace Errors {
          * @memberof DuplicateResourceId
          */
         constructor(public readonly id: string) {
-            super(`Duplciate resource id ${id}. Another resource with the same id already exists.`);
+            super(`Duplicate resource id ${id}. Another resource with the same id already exists.`);
         }
     }
 
@@ -97,6 +97,31 @@ export namespace Errors {
          */
         constructor(public readonly instanceId: string, details: string) {
             super(`Invalid id ${instanceId}. Details: ${details}`);
+        }
+    }
+
+    /**
+     * @description Error thrown when an invalid operation on a target is performed.
+     * @export
+     * @class InvalidOperationError
+     * @extends {VocabularyError}
+     */
+    export class InvalidOperationError extends VocabularyError {
+        /**
+         * Creates an instance of InvalidOperationError.
+         * @param {string} operation The invalid operation.
+         * @param {string} targetId The id of the target entity on which the invalid operation was performed.
+         * @param {string} targetType The type of the target entity on which the invalid operation was performed.
+         * @param {string} description Error description.
+         * @memberof InvalidOperationError
+         */
+        constructor(
+            public readonly operation: string,
+            public readonly targetId: string,
+            public readonly targetType: string,
+            description: string) {
+
+            super(`Invalid operation ${operation} on ${targetId} of type ${targetType}. Error: ${description}`);
         }
     }
 

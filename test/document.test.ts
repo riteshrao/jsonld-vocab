@@ -5,6 +5,7 @@ import Vocabulary, { Document, Errors, Class } from '../src';
 const testContext = require('./samples/context.json');
 const testVocab = require('./samples/vocabulary.json');
 const testInstances = require('./samples/instances.json');
+const testPartialInstances = require('./samples/partial-instances.json');
 
 describe('Document', () => {
     let vocabulary: Vocabulary;
@@ -78,12 +79,12 @@ describe('Document', () => {
             expect(() => document.getInstance('vocab:Person')).to.throw(Errors.InstanceNotFoundError);
         });
 
-        it('should throw not found when attempting to get vocabulary instance', () => {
+        it('should throw when attempting to get vocabulary instance', () => {
             expect(() => document.getInstance('http://example.org/classes/Department/deptA')).to.throw(Errors.InstanceNotFoundError);
         });
 
         it('should return null when instance does not exist', () => {
-            expect(document.getInstance('urn:example.org:persons/doesnotexist')).to.be.null;
+            expect(document.getInstance('urn:example.org:persons/doesnotexist')).to.be.undefined;
         });
 
         it('should get instance from document using id', () => {
@@ -118,7 +119,6 @@ describe('Document', () => {
 
         it('should get all descendant instances of class', () => {
             const instances = [...document.getInstancesOf('Person', true)];
-            expect(instances.length).to.equal(3);
             expect(instances.some(x => x.id === 'urn:example.org:employees/jdoe')).to.be.true;
             expect(instances.some(x => x.id === 'urn:example.org:employees/jilld')).to.be.true;
             expect(instances.some(x => x.id === 'urn:example.org:employees/janed')).to.be.true;
@@ -173,8 +173,8 @@ describe('Document', () => {
         });
     });
 
-    describe('.normalize', () => {
-        before(async () => {
+    describe('.load', () => {
+        beforeEach(async () => {
             document = new Document(vocabulary, {
                 blankIdNormalizer: (instance) => {
                     if (instance.isInstanceOf('Project')) {
@@ -192,30 +192,45 @@ describe('Document', () => {
                     }
                 }
             });
-
-            await document.load(testInstances);
-            document.normalize();
         });
 
-        it('should have normalized blank type nodes', () => {
-            const instances = document.getInstancesOf('Project');
-            expect(instances.count()).to.equal(2);
+        describe('partials', () => {
+            beforeEach(async () => {
+                await document.load(testPartialInstances.employees);
+                await document.load(testPartialInstances.locations);
+                await document.load(testPartialInstances.departments);
+            });
+
+            it('should normalize correctly', () => {
+                expectNormalized();
+            });
         });
 
-        it('should have normalized blank id nodes', () => {
+        describe('complete', () => {
+            beforeEach(async () => {
+                await document.load(testInstances);
+            });
+
+            it('should normalize correctly', () => {
+                expectNormalized();
+            });
+        });
+
+        function expectNormalized() {
+            expect(document.getInstancesOf('Project').count()).to.be.equal(2);
+
+            // Project instances have types
             const projectAInstance = document.getInstance('urn:example.org:employees/janed/project/projectA');
             const projectBInstance = document.getInstance('urn:example.org:employees/janed/project/projectB');
             expect(projectAInstance).to.be.ok;
             expect(projectBInstance).to.be.ok;
-        });
 
-        it('should have retained references for changed blank ids', () => {
+            // Project instances have @id and retain incoming references
             const instance = document.getInstance('urn:example.org:employees/janed');
-
             const projects = [...instance.getProperty('Manager/project').value];
             expect(projects.length).to.equal(2);
             expect(projects.some(x => x.id === 'urn:example.org:employees/janed/project/projectA')).to.be.true;
             expect(projects.some(x => x.id === 'urn:example.org:employees/janed/project/projectB')).to.be.true;
-        });
+        }
     });
 });

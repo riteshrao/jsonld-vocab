@@ -7,12 +7,12 @@ import Id from './id';
 import Instance from './instance';
 import InstanceProxy from './instanceProxy';
 import Vocabulary from './vocabulary';
-import { ClassReference, InstanceReference } from './types';
+import { ClassReference, InstanceReference, PropertyReference } from './types';
 
 /**
  *  Normalizer function used to normalize instances in a document.
  */
-export type InstanceNormalizer = (instance: Instance, vocabulary: Vocabulary) => void;
+export type InstanceNormalizer = (instance: Instance, document: Document) => void;
 
 /**
  *  Options used by a Document.
@@ -28,7 +28,8 @@ export type DocumentOptions = {
  * @class Document
  */
 export class Document {
-    private readonly graph: JsonldGraph;
+    private readonly _graph: JsonldGraph;
+    private readonly _instances = new Map<string, Instance & any>();
 
     /**
      * Creates an instance of Document.
@@ -42,11 +43,22 @@ export class Document {
             throw new ReferenceError(`Invalid vocabulary. vocabulary is '${vocabulary}'`);
         }
 
-        this.graph = new JsonldGraph();
-        this.graph.addPrefix('vocab', vocabulary.baseIri);
+        this._graph = new JsonldGraph();
+        this._graph.addPrefix('vocab', vocabulary.baseIri);
+
         for (const [uri, context] of this.vocabulary.context.definitions) {
-            this.graph.addContext(uri, context);
+            this._graph.addContext(uri, context);
         }
+
+        this._graph.on('vertexIdChanged', (vertex, previousId) => {
+            const prevInstanceId = Id.expand(previousId, this.vocabulary.baseIri);
+            const instanceId = Id.expand(vertex.id, this.vocabulary.baseIri);
+            if (this._instances.has(prevInstanceId)) {
+                const instance = this._instances.get(prevInstanceId);
+                this._instances.delete(prevInstanceId);
+                this._instances.set(instanceId, instance);
+            }
+        });
     }
 
     /**
@@ -56,9 +68,7 @@ export class Document {
      * @memberof Document
      */
     get instances(): Iterable<Instance> {
-        return this.graph
-            .getVertices()
-            .map(vertex => InstanceProxy.proxify(new Instance(vertex, this.vocabulary)));
+        return new Iterable(this._instances).map(x => x[1]);
     }
 
     /**
@@ -69,7 +79,7 @@ export class Document {
      * @returns {(T)}
      * @memberof Document
      */
-    createInstance<T = any>(classReference: ClassReference, id: string): T & Instance {
+    createInstance<T = void>(classReference: ClassReference, id: string): Instance & T {
         if (!classReference) {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}'`);
         }
@@ -78,11 +88,11 @@ export class Document {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        if (this.vocabulary.hasResource(id)) {
+        if (this.vocabulary.hasResource(id) || this.vocabulary.hasInstance(id)) {
             throw new Errors.InvalidInstanceIdError(id, 'A class or resource with the specified id already exists.');
         }
 
-        if (this.graph.hasVertex(id)) {
+        if (this._instances.has(id)) {
             throw new Errors.DuplicateInstanceError(id);
         }
 
@@ -95,9 +105,10 @@ export class Document {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
-        const instance = new Instance(this.graph.createVertex(id), this.vocabulary);
+        const instance = InstanceProxy.proxify<T>(new Instance(this._graph.createVertex(id), this.vocabulary, this));
         instance.setClass(classType);
-        return InstanceProxy.proxify<T>(instance);
+        this._instances.set(instance.id, instance);
+        return instance;
     }
 
     /**
@@ -107,7 +118,7 @@ export class Document {
      * @returns {(T)}
      * @memberof Document
      */
-    getInstance<T = any>(id: string): T & Instance {
+    getInstance<T = void>(id: string): T & Instance {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
@@ -116,13 +127,7 @@ export class Document {
             throw new Errors.InstanceNotFoundError(id);
         }
 
-        const instanceV = this.graph.getVertex(id);
-        if (!instanceV || instanceV.types.count() === 0) {
-            return null;
-        }
-
-        const instance = new Instance(instanceV, this.vocabulary);
-        return InstanceProxy.proxify<T>(instance);
+        return this._instances.get(id);
     }
 
     /**
@@ -133,7 +138,7 @@ export class Document {
      * @returns {(Iterable<T>)}
      * @memberof Document
      */
-    getInstancesOf<T = any>(classReference: ClassReference, descendants: boolean = false): Iterable<T & Instance> {
+    getInstancesOf<T = void>(classReference: ClassReference, descendants: boolean = false): Iterable<Instance & T> {
         if (!classReference) {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}`);
         }
@@ -143,16 +148,15 @@ export class Document {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
-        const classV = this.graph.getVertex(Id.expand(classType.id));
+        const classV = this._graph.getVertex(Id.expand(classType.id, this.vocabulary.baseIri));
         if (!descendants) {
             if (!classV) {
                 return Iterable.empty();
             } else {
                 return classV
                     .instances
-                    .map(vertex => InstanceProxy.proxify<T>(new Instance(vertex, this.vocabulary)));
+                    .map(vertex => this._instances.get(vertex.id));
             }
-
         } else {
             const _that = this;
             return new Iterable((function* getDescendantInstances() {
@@ -162,24 +166,50 @@ export class Document {
                     for (const instanceV of classV.instances) {
                         if (!tracker.has(instanceV.id)) {
                             tracker.add(instanceV.id);
-                            yield InstanceProxy.proxify<T>(new Instance(instanceV, _that.vocabulary));
+                            yield _that._instances.get(instanceV.id);
                         }
                     }
                 }
 
                 for (const descendantTypes of classType.descendants) {
-                    const descendantV = _that.graph.getVertex(Id.expand(descendantTypes.id));
+                    const descendantV = _that._graph.getVertex(Id.expand(descendantTypes.id, _that.vocabulary.baseIri));
                     if (descendantV) {
                         for (const instanceV of descendantV.instances) {
                             if (!tracker.has(instanceV.id)) {
                                 tracker.add(instanceV.id);
-                                yield InstanceProxy.proxify<T>(new Instance(instanceV, _that.vocabulary));
+                                yield _that._instances.get(instanceV.id);
                             }
                         }
                     }
                 }
             })());
         }
+    }
+
+    /**
+     * @description Gets all instances that refer to the specified instance.
+     * @param {InstanceReference} instanceReference The instance id or instance whose referrers should be retrieved.
+     * @returns {Iterable<Instance>}
+     * @memberof Document
+     */
+    getReferrersOf(instanceReference: InstanceReference, propertyReference?: PropertyReference): Iterable<Instance> {
+        if (!instanceReference) {
+            throw new ReferenceError(`Invalid instanceReference. instanceReference is '${instanceReference}'`);
+        }
+
+        const instanceId = typeof instanceReference === 'string' ? instanceReference : instanceReference.id;
+        const instanceV = this._graph.getVertex(instanceId);
+        if (!instanceV) {
+            throw new Errors.InstanceNotFoundError(instanceReference as string);
+        }
+
+        const propertyId = propertyReference
+            ? typeof propertyReference === 'string' ? propertyReference : propertyReference.id
+            : null;
+
+        return instanceV
+            .getIncoming(Id.expand(propertyId, this.vocabulary.baseIri))
+            .map(x => this._instances.get(x.fromVertex.id));
     }
 
     /**
@@ -197,43 +227,58 @@ export class Document {
             return false;
         }
 
-        return this.graph.hasVertex(id);
+        return this._instances.has(id);
     }
 
     /**
-     * @description Normalizes blank id and blank type normalizer.
-     * @param {{ blankIdNormalizer?: InstanceNormalizer, blankTypeNormalizer?: InstanceNormalizer }} options
-     * @memberof Document
-     */
-    normalize() {
-        if (!this.options.blankIdNormalizer && !this.options.blankTypeNormalizer) {
-            return;
-        }
-
-        for (const vertex of this.graph.getVertices(({ id }) => !this.vocabulary.hasResource(id))) {
-            if (vertex.types.count() === 0 && this.options.blankTypeNormalizer) {
-                this.options.blankTypeNormalizer(new Instance(vertex, this.vocabulary), this.vocabulary);
-            }
-
-            if (vertex.isBlankNode && this.options.blankIdNormalizer) {
-                this.options.blankIdNormalizer(new Instance(vertex, this.vocabulary), this.vocabulary);
-            }
-        }
-    }
-
-    /**
-     * @description Loads an input document.
-     * @param {object} input The input to load.
+     * @description Loads input documents.
+     * @param {object|object[]} input The input documents to load
      * @param {string[]} [contexts] Optional contexts to use for parsing the input.
      * @returns {Promise<void>}
      * @memberof Document
      */
-    async load(input: object, contexts?: string[]): Promise<void> {
-        if (!input) {
-            throw new ReferenceError(`Invalid input. input is '${input}'`);
+    async load(inputs: object | object[], contexts?: string[]): Promise<void> {
+        if (!inputs) {
+            throw new ReferenceError(`Invalid inputs. inputs is ${inputs}.`);
         }
 
-        await this.graph.load(input, contexts);
+        const vertices = await this._graph.load(inputs, contexts);
+        const blankTypeInstances: Instance[] = [];
+        const blankIdInstances: Instance[] = [];
+
+        for (const vertexId of vertices) {
+            const vertex = this._graph.getVertex(vertexId);
+            const instance = InstanceProxy.proxify(new Instance(vertex, this.vocabulary, this));
+            this._instances.set(instance.id, instance);
+
+            if (vertex.types.count() === 0 && this.options.blankTypeNormalizer) {
+                blankTypeInstances.push(instance);
+            } else {
+                for (const typeV of vertex.types) {
+                    const classType = this.vocabulary.getClass(typeV.id);
+                    if (classType) {
+                        instance.setClass(classType);
+                    }
+                }
+            }
+
+            if (vertex.isBlankNode && this.options.blankIdNormalizer) {
+                blankIdInstances.push(instance);
+            }
+        }
+
+        for (const instance of blankTypeInstances) {
+            this.options.blankTypeNormalizer(instance, this);
+        }
+
+        for (const instance of blankIdInstances) {
+            const previousId = instance.id;
+            this.options.blankIdNormalizer(instance, this);
+            if (previousId !== instance.id) {
+                this._instances.delete(previousId);
+                this._instances.set(instance.id, instance);
+            }
+        }
     }
 
     /**
@@ -249,14 +294,16 @@ export class Document {
 
         const instanceId = typeof instanceReference === 'string' ? instanceReference : instanceReference.id;
         if (!recursive) {
-            this.graph.removeVertex(instanceId);
+            this._graph.removeVertex(instanceId);
+            this._instances.delete(instanceId);
         } else {
-            const instance = this.graph.getVertex(instanceId);
+            const instance = this._graph.getVertex(instanceId);
             if (!instance) {
                 return;
             }
 
             this._removeInstanceRecursive(instance);
+            this._instances.delete(instanceId);
         }
     }
 
@@ -266,23 +313,24 @@ export class Document {
      * @memberof Document
      */
     toJson(options?: JsonFormatOptions) {
-        return this.graph.toJson(options);
+        return this._graph.toJson(options);
     }
 
-    private _removeInstanceRecursive(instance: Vertex, tracker: Set<string> = new Set<string>()): void {
-        if (tracker.has(instance.id)) {
+    private _removeInstanceRecursive(instanceV: Vertex, tracker: Set<string> = new Set<string>()): void {
+        if (tracker.has(instanceV.id)) {
             return;
         }
 
-        tracker.add(instance.id);
-        for (const outgoing of instance.getOutgoing().items()) {
-            outgoing.toVertex.removeIncoming(outgoing.label, instance.id);
+        tracker.add(instanceV.id);
+        for (const outgoing of instanceV.getOutgoing().items()) {
+            outgoing.toVertex.removeIncoming(outgoing.label, instanceV.id);
             if (outgoing.toVertex.getIncoming().count() === 0) {
                 this._removeInstanceRecursive(outgoing.toVertex);
             }
         }
 
-        this.graph.removeVertex(instance);
+        this._graph.removeVertex(instanceV);
+        this._instances.delete(instanceV.id);
     }
 }
 

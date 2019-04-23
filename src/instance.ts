@@ -8,7 +8,6 @@ import * as types from './types';
 import Errors from './errors';
 import Class from './class';
 import Id from './id';
-import InstanceProxy from './instanceProxy';
 import Property from './property';
 import { ValueType, ContainerType } from './context';
 
@@ -18,6 +17,9 @@ import { ValueType, ContainerType } from './context';
  * @class Instance
  */
 export class Instance {
+    private readonly _classes = new Map<string, Class>();
+    private readonly _properties = new Map<string, InstanceProperty>();
+
     /**
      * Creates an instance of Instance.
      * @param {Vertex} vertex The vertex backing the instance.
@@ -26,7 +28,8 @@ export class Instance {
      */
     constructor(
         public readonly vertex: Vertex,
-        public readonly vocabulary: types.Vocabulary) {
+        public readonly vocabulary: types.Vocabulary,
+        private readonly instanceProvider: types.InstanceProvider) {
 
         if (!vertex) {
             throw new ReferenceError(`Invalid vertex. vertex is ${vertex}`);
@@ -34,6 +37,10 @@ export class Instance {
 
         if (!vocabulary) {
             throw new ReferenceError(`Invalid vocabulary. vocabulary is ${vocabulary}`);
+        }
+
+        if (!instanceProvider) {
+            throw new ReferenceError(`Invalid instanceProvider. instanceProvider is ${instanceProvider}`);
         }
     }
 
@@ -43,7 +50,7 @@ export class Instance {
      * @memberof Instance
      */
     get id(): string {
-        return Id.compact(this.vertex.id);
+        return Id.compact(this.vertex.id, this.vocabulary.baseIri);
     }
 
     /**
@@ -55,7 +62,7 @@ export class Instance {
             throw new ReferenceError(`Invalid id. id is '${value}'`);
         }
 
-        const expandedId = Id.expand(value);
+        const expandedId = Id.expand(value, this.vocabulary.baseIri);
         if (this.vertex.id === expandedId) {
             return;
         }
@@ -74,7 +81,7 @@ export class Instance {
      * @memberof Instance
      */
     get classes(): Iterable<Class> {
-        return this.vertex.types.map(typeV => this.vocabulary.getClass(typeV.id));
+        return new Iterable(this._classes).map(x => x[1]);
     }
 
     /**
@@ -84,18 +91,7 @@ export class Instance {
      * @memberof Instance
      */
     get properties(): Iterable<InstanceProperty> {
-        const _that = this;
-        return new Iterable((function* getInstanceProperties() {
-            const tracker = new Set<string>();
-            for (const classType of _that.classes) {
-                for (const property of classType.properties) {
-                    if (!tracker.has(property.id)) {
-                        tracker.add(property.id);
-                        yield new InstanceProperty(_that.vertex, property, _that.vocabulary);
-                    }
-                }
-            }
-        })());
+        return new Iterable(this._properties).map(x => x[1]);
     }
 
     /**
@@ -120,7 +116,7 @@ export class Instance {
             .map((incoming) => {
                 return {
                     property: this.vocabulary.getProperty(incoming.label),
-                    instance: InstanceProxy.proxify(new Instance(incoming.fromVertex, this.vocabulary))
+                    instance: this.instanceProvider.getInstance(incoming.fromVertex.id)
                 };
             });
     }
@@ -136,19 +132,7 @@ export class Instance {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        let property: Property;
-        for (const classType of this.classes) {
-            property = classType.getProperty(id);
-            if (property) {
-                break;
-            }
-        }
-
-        if (!property) {
-            return null;
-        } else {
-            return new InstanceProperty(this.vertex, property, this.vocabulary);
-        }
+        return this._properties.get(Id.expand(id, this.vocabulary.baseIri, true));
     }
 
     /**
@@ -167,8 +151,23 @@ export class Instance {
             throw new Errors.ResourceNotFoundError(propertyReference as string, 'Property');
         }
 
-        return this.vertex.getIncoming(Id.expand(property.id))
-            .map(({ fromVertex }) => InstanceProxy.proxify(new Instance(fromVertex, this.vocabulary)));
+        return this.vertex
+            .getIncoming(Id.expand(property.id, this.vocabulary.baseIri))
+            .map(({ fromVertex }) => this.instanceProvider.getInstance(fromVertex.id));
+    }
+
+    /**
+     * @description Checks of a property exists on the instance.
+     * @param {string} id The id of the property to check.
+     * @returns
+     * @memberof Instance
+     */
+    hasProperty(id: string) {
+        if (!id) {
+            throw new ReferenceError(`Invalid id. id is '${id}'`);
+        }
+
+        return this._properties.has(Id.expand(id, this.vocabulary.baseIri));
     }
 
     /**
@@ -182,8 +181,11 @@ export class Instance {
             throw new ReferenceError(`Invalid classType. classType is '${classReference}'`);
         }
 
-        const classId = typeof classReference === 'string' ? Id.expand(classReference) : Id.expand(classReference.id);
-        return this.vertex.isType(classId) || this.classes.map(x => x.isDescendantOf(classId)).some(x => x);
+        const classId = typeof classReference === 'string'
+            ? Id.expand(classReference, this.vocabulary.baseIri)
+            : Id.expand(classReference.id, this.vocabulary.baseIri);
+
+        return this._classes.has(classId) || this.classes.map(x => x.isDescendantOf(classId)).some(x => x);
     }
 
     /**
@@ -214,15 +216,14 @@ export class Instance {
         }
 
         // Remove all property values and outgoing references for class properties.
-        this.vertex.removeType(Id.expand(classType.id));
-        const currentProps = [...this.properties];
-        for (const property of classType.properties) {
-            if (!currentProps.some(x => x.id === property.id)) {
-                if (property.valueType === ValueType.id || property.valueType === ValueType.vocab) {
-                    this.vertex.removeOutgoing(Id.expand(property.id));
-                } else {
-                    this.vertex.deleteAttribute(Id.expand(property.id));
-                }
+        this.vertex.removeType(Id.expand(classType.id, this.vocabulary.baseIri));
+        this._classes.delete(Id.expand(classType.id, this.vocabulary.baseIri));
+        for (const classProperty of classType.properties) {
+            const propertyId = Id.expand(classProperty.id, this.vocabulary.baseIri);
+            if (!this.classes.some(x => x.hasProperty(classProperty))) {
+                this.vertex.removeOutgoing(propertyId);
+                this.vertex.deleteAttribute(propertyId);
+                this._properties.delete(propertyId);
             }
         }
 
@@ -243,6 +244,7 @@ export class Instance {
         if (!classType) {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
+
         if (!(classType instanceof Class)) {
             throw new Errors.ResourceTypeMismatchError(classReference as string, 'Class', '');
         }
@@ -251,7 +253,15 @@ export class Instance {
             return;
         }
 
-        this.vertex.setType(Id.expand(classType.id));
+        this.vertex.setType(Id.expand(classType.id, this.vocabulary.baseIri));
+        this._classes.set(Id.expand(classType.id, this.vocabulary.baseIri), classType);
+        for (const property of classType.properties) {
+            const propertyId = Id.expand(property.id, this.vocabulary.baseIri);
+            if (!this._properties.has(propertyId)) {
+                const instanceProperty = new InstanceProperty(this.vertex, property, this.vocabulary, this.instanceProvider);
+                this._properties.set(propertyId, instanceProperty);
+            }
+        }
         return this;
     }
 
@@ -275,7 +285,8 @@ export class InstanceProperty {
     constructor(
         private readonly vertex: Vertex,
         private readonly property: Property,
-        private readonly vocabulary: types.Vocabulary) {
+        private readonly vocabulary: types.Vocabulary,
+        private readonly instanceProvider: types.InstanceProvider) {
 
         if (!vertex) {
             throw new ReferenceError(`Invalid vertex. veretx is '${vertex}'`);
@@ -348,18 +359,18 @@ export class InstanceProperty {
      */
     get value(): any {
         if (this.container) {
-            return new ContainerPropertyValues(this.vertex, this.property, this.vocabulary);
+            return new ContainerPropertyValues(this.vertex, this.property, this.vocabulary, this.instanceProvider);
         } else {
-            if (this.vertex.hasAttribute(Id.expand(this.property.id))) {
-                return this.vertex.getAttributeValue(Id.expand(this.property.id));
+            if (this.vertex.hasAttribute(Id.expand(this.property.id, this.vocabulary.baseIri))) {
+                return this.vertex.getAttributeValue(Id.expand(this.property.id, this.vocabulary.baseIri));
             } else {
-                const outgoingInstance = this.vertex.getOutgoing(Id.expand(this.property.id)).first();
+                const outgoingInstance = this.vertex.getOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri)).first();
                 if (outgoingInstance) {
-                    const instance = this.vocabulary.getEntity(Id.expand(outgoingInstance.toVertex.id));
+                    const instance = this.vocabulary.getEntity(Id.expand(outgoingInstance.toVertex.id, this.vocabulary.baseIri));
                     if (instance) {
                         return instance;
                     } else {
-                        return InstanceProxy.proxify(new Instance(outgoingInstance.toVertex, this.vocabulary));
+                        return this.instanceProvider.getInstance(outgoingInstance.toVertex.id);
                     }
                 } else {
                     return undefined;
@@ -375,30 +386,30 @@ export class InstanceProperty {
     set value(value: any) {
         if (this.container) {
             throw new Errors.InstancePropertyValueError(
-                Id.compact(this.vertex.id),
+                Id.compact(this.vertex.id, this.vocabulary.baseIri),
                 this.property.id,
                 'Value setter for container properties cannot be used. Use add/remove value methods instead.');
         }
 
         if (value === null || value === undefined) {
-            this.vertex.removeOutgoing(Id.expand(this.property.id));
-            this.vertex.deleteAttribute(Id.expand(this.property.id));
+            this.vertex.removeOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri));
+            this.vertex.deleteAttribute(Id.expand(this.property.id, this.vocabulary.baseIri));
             return;
         }
 
         if ((this.valueType === ValueType.id || this.valueType === ValueType.vocab) && (!(value instanceof Instance) && !(value instanceof Class))) {
             throw new Errors.InstancePropertyValueError(
-                Id.compact(this.vertex.id),
+                Id.compact(this.vertex.id, this.vocabulary.baseIri),
                 this.property.id,
                 'Value for @id or @vocab properties MUST be a valid Instance or Class reference');
         }
 
-        this.vertex.removeOutgoing(Id.expand(this.property.id));
+        this.vertex.removeOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri));
 
         if (value instanceof Instance || value instanceof Class) {
-            this.vertex.setOutgoing(Id.expand(this.property.id), Id.expand(value.id), true);
+            this.vertex.setOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri), Id.expand(value.id, this.vocabulary.baseIri), true);
         } else {
-            this.vertex.replaceAttributeValue(Id.expand(this.property.id), value);
+            this.vertex.replaceAttributeValue(Id.expand(this.property.id, this.vocabulary.baseIri), value);
         }
     }
 }
@@ -419,12 +430,13 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
     constructor(
         private readonly vertex: Vertex,
         private readonly property: Property,
-        private readonly vocabulary: types.Vocabulary) {
+        private readonly vocabulary: types.Vocabulary,
+        private readonly instanceProvider: types.InstanceProvider) {
     }
 
     *[Symbol.iterator](): Iterator<T> {
-        if (this.vertex.hasAttribute(Id.expand(this.property.id))) {
-            const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
+        if (this.vertex.hasAttribute(Id.expand(this.property.id, this.vocabulary.baseIri))) {
+            const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id, this.vocabulary.baseIri));
             if (values instanceof Array) {
                 for (const value of values) {
                     yield value;
@@ -433,7 +445,7 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
                 return values;
             }
         } else {
-            for (const { toVertex } of this.vertex.getOutgoing(Id.expand(this.property.id))) {
+            for (const { toVertex } of this.vertex.getOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri))) {
                 const instance = this.vocabulary.getInstance<T>(toVertex.id);
                 if (instance) {
                     yield instance;
@@ -441,7 +453,7 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
                     // @type: @vocab allows for IRI's to point to custom vocabulary instances defined in the document.
                     // If the instance was not found in the vocabulary then its local vocabulary instance in the document.
                     // Construct an instance and return that.
-                    yield InstanceProxy.proxify<T>(new Instance(toVertex, this.vocabulary));
+                    yield this.instanceProvider.getInstance<T>(toVertex.id);
                 }
             }
         }
@@ -453,15 +465,15 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
      * @memberof ContainerPropertyValues
      */
     get count(): number {
-        if (this.vertex.hasAttribute(Id.expand(this.property.id))) {
-            const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id));
+        if (this.vertex.hasAttribute(Id.expand(this.property.id, this.vocabulary.baseIri))) {
+            const values = this.vertex.getAttributeValue<any>(Id.expand(this.property.id, this.vocabulary.baseIri));
             if (!values) {
                 return 0;
             } else {
                 return values instanceof Array ? values.length : 1;
             }
         } else {
-            return this.vertex.getOutgoing(Id.expand(this.property.id)).count();
+            return this.vertex.getOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri)).count();
         }
     }
 
@@ -477,15 +489,15 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
 
         if ((this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) && !(value instanceof Instance)) {
             throw new Errors.InstancePropertyValueError(
-                Id.compact(this.vertex.id),
+                Id.compact(this.vertex.id, this.vocabulary.baseIri),
                 this.property.id,
                 'Value for @id or @vocab properties MUST be a valid Instance');
         }
 
         if (value instanceof Instance) {
-            this.vertex.setOutgoing(Id.expand(this.property.id), Id.expand(value.id));
+            this.vertex.setOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri), Id.expand(value.id, this.vocabulary.baseIri));
         } else {
-            this.vertex.addAttributeValue(Id.expand(this.property.id), value);
+            this.vertex.addAttributeValue(Id.expand(this.property.id, this.vocabulary.baseIri), value);
         }
     }
 
@@ -500,9 +512,12 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const outgoing = this.vertex.getOutgoing(Id.expand(this.property.id)).first(x => x.toVertex.id === Id.expand(id));
+        const outgoing = this.vertex
+            .getOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri))
+            .first(x => x.toVertex.id === Id.expand(id, this.vocabulary.baseIri));
+
         if (outgoing) {
-            return InstanceProxy.proxify<T>(new Instance(outgoing.toVertex, this.vocabulary));
+            return this.instanceProvider.getInstance(outgoing.toVertex.id);
         } else {
             return null;
         }
@@ -520,14 +535,17 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const outgoing = this.vertex.getOutgoing(Id.expand(this.property.id)).first(x => x.toVertex.id === Id.expand(id));
+        const outgoing = this.vertex
+            .getOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri))
+            .first(x => x.toVertex.id === Id.expand(id, this.vocabulary.baseIri));
+
         if (!outgoing) {
             return false;
         }
 
         if (classType) {
             const classId = typeof classType === 'string' ? classType : classType.id;
-            return outgoing.toVertex.isType(Id.expand(classId));
+            return outgoing.toVertex.isType(Id.expand(classId, this.vocabulary.baseIri));
         } else {
             return true;
         }
@@ -545,15 +563,15 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
 
         if ((this.property.valueType === ValueType.id || this.property.valueType === ValueType.vocab) && !(value instanceof Instance)) {
             throw new Errors.InstancePropertyValueError(
-                Id.compact(this.vertex.id),
+                Id.compact(this.vertex.id, this.vocabulary.baseIri),
                 this.property.id,
                 'Value for @id or @vocab properties MUST be a valid Instance');
         }
 
         if (value instanceof Instance) {
-            this.vertex.removeOutgoing(Id.expand(this.property.id), Id.expand(value.id));
+            this.vertex.removeOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri), Id.expand(value.id, this.vocabulary.baseIri));
         } else {
-            this.vertex.removeAttributeValue(Id.expand(this.property.id), value);
+            this.vertex.removeAttributeValue(Id.expand(this.property.id, this.vocabulary.baseIri), value);
         }
     }
 
@@ -562,8 +580,8 @@ export class ContainerPropertyValues<T = any> implements LibIterable<T> {
      * @memberof ContainerPropertyValues
      */
     clear(): void {
-        this.vertex.removeOutgoing(Id.expand(this.property.id));
-        this.vertex.deleteAttribute(Id.expand(this.property.id));
+        this.vertex.removeOutgoing(Id.expand(this.property.id, this.vocabulary.baseIri));
+        this.vertex.deleteAttribute(Id.expand(this.property.id, this.vocabulary.baseIri));
     }
 }
 

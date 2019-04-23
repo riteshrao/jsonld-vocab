@@ -107,7 +107,7 @@ describe('Class', () => {
             expect(property.hasDomain('Manager')).to.be.true;
         });
 
-        it('should do nothing when property is already part of class hierarhcy', () => {
+        it('should do nothing when property is already part of class hierarchy', () => {
             const firstNameProp = vocabulary.getProperty('Person/firstName');
             const managerClass = vocabulary.getClass('Manager');
             managerClass.addProperty(firstNameProp);

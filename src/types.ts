@@ -24,7 +24,11 @@ export interface ContainerPropertyValues<T = any> extends LibIterable<T> {
     clear(): void;
 }
 
-export interface Vocabulary {
+export interface InstanceProvider {
+    getInstance<T = void>(id: string): Instance & T;
+}
+
+export interface Vocabulary extends InstanceProvider {
     readonly baseIri: string;
     readonly classes: Iterable<Class>;
     readonly contextUri: string;
@@ -39,7 +43,6 @@ export interface Vocabulary {
     createInstance<T = Instance>(id: string, ...classTypes: ClassReference[]): T;
     getClass(id: string): Class;
     getEntity(id: string): Resource | Instance;
-    getInstance<T = Instance>(id: string): T;
     getProperty(id: string): Property;
     getResource(id: string): Resource;
     hasDataType(id: string): boolean;
