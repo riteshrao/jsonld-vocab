@@ -22,7 +22,7 @@ export abstract class Resource {
      * @memberof Resource
      */
     get id(): string {
-        return id.compact(this.vertex.id);
+        return id.compact(this.vertex.id, this.vocabulary.baseIri);
     }
 
     /**
@@ -30,7 +30,7 @@ export abstract class Resource {
      * @memberof Resource
      */
     set id(value: string) {
-        const expandedId = id.expand(value);
+        const expandedId = id.expand(value, this.vocabulary.baseIri);
         if (this.vertex.id === expandedId) {
             return;
         }

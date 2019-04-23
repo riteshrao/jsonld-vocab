@@ -79,7 +79,7 @@ describe('Document', () => {
             expect(() => document.getInstance('vocab:Person')).to.throw(Errors.InstanceNotFoundError);
         });
 
-        it('should throw not found when attempting to get vocabulary instance', () => {
+        it('should throw when attempting to get vocabulary instance', () => {
             expect(() => document.getInstance('http://example.org/classes/Department/deptA')).to.throw(Errors.InstanceNotFoundError);
         });
 

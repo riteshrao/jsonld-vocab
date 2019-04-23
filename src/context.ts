@@ -167,7 +167,7 @@ export class Context {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const compactId = Id.compact(id);
+        const compactId = Id.compact(id, this.baseIri);
         for (const [term, definition] of this._terms.entries()) {
             if (definition.id === compactId) {
                 return { term, definition };
@@ -209,7 +209,7 @@ export class Context {
             throw new Errors.DuplicateContextTermError(term);
         }
 
-        const compactId = Id.compact(id);
+        const compactId = Id.compact(id, this.baseIri);
         const existing = this.resolveTerm(id);
         if (existing) {
             // Id was already mapped to another term. Copy its definition over to the new term and delete the old one.

@@ -42,17 +42,6 @@ export namespace InstanceProxy {
             }
         });
 
-        // for (const property of instance.properties.filter(x => !!x.term)) {
-        //     Object.defineProperty(instance, property.term, {
-        //         get: () => {
-        //             return property.value;
-        //         },
-        //         set: (value) => {
-        //             property.value = value;
-        //         }
-        //     });
-        // }
-
         return proxy as Instance & T;
     }
 }

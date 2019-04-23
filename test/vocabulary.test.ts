@@ -21,9 +21,7 @@ describe('Vocabulary', () => {
 
     describe('.classes', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should return all classes defined in the vocabulary', () => {
@@ -41,9 +39,7 @@ describe('Vocabulary', () => {
 
     describe('.instances', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should get all instances in the vocabulary', () => {
@@ -56,9 +52,7 @@ describe('Vocabulary', () => {
 
     describe('.properties', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should get all properties across all classes in the vocabulary', () => {
@@ -71,9 +65,7 @@ describe('Vocabulary', () => {
 
     describe('.resources', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should get all class and property resources in the vocabulary', () => {
@@ -84,9 +76,7 @@ describe('Vocabulary', () => {
 
     describe('.createClass', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should throw when id is undefined, null or empty', () => {
@@ -127,9 +117,7 @@ describe('Vocabulary', () => {
 
     describe('.createInstance', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should throw when id is undefined, null or empty', () => {
@@ -174,9 +162,7 @@ describe('Vocabulary', () => {
 
     describe('.createProperty', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should throw when id is undefined, null or empty', () => {
@@ -217,9 +203,7 @@ describe('Vocabulary', () => {
 
     describe('.getInstance', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should throw when id is undefined, null or empty', () => {
@@ -254,9 +238,7 @@ describe('Vocabulary', () => {
 
     describe('.getInstancesOf', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should throw when class reference is undefined, null or empty', () => {
@@ -289,9 +271,7 @@ describe('Vocabulary', () => {
 
     describe('.getProperty', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should throw when property id is undefined, null or empty', () => {
@@ -321,9 +301,7 @@ describe('Vocabulary', () => {
 
     describe('.getResource', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should throw when property id is undefined, null or empty', () => {
@@ -359,9 +337,7 @@ describe('Vocabulary', () => {
 
     describe('.context', () => {
         before(async () => {
-            vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
-            vocabulary.context.load('http://example.org/context', testContext);
-            await vocabulary.load(testVocabulary);
+            vocabulary = await loadVocabulary();
         });
 
         it('should be able to load context with references', () => {
@@ -375,4 +351,53 @@ describe('Vocabulary', () => {
             });
         });
     });
+
+    describe('.hasDataType', () => {
+        before(async () => {
+            vocabulary = await loadVocabulary();
+        });
+
+        it('should throw when id is undefined, null or empty', () => {
+            expect(() => vocabulary.hasDataType(undefined)).to.Throw(ReferenceError);
+            expect(() => vocabulary.hasDataType(null)).to.Throw(ReferenceError);
+            expect(() => vocabulary.hasDataType('')).to.Throw(ReferenceError);
+        });
+
+        it('should return false for unknown data type', () => {
+            expect(vocabulary.hasDataType('xsd:unknown')).to.equal(false);
+        });
+
+        it('should return true for known data types', () => {
+            expect(vocabulary.hasDataType('xsd:string')).to.equal(true);
+            expect(vocabulary.hasDataType('xsd:date')).to.equal(true);
+        });
+    });
+
+    describe('.hasInstance', () => {
+        before(async () => {
+            vocabulary = await loadVocabulary();
+        });
+
+        it('should throw when id is undefined, null or empty', () => {
+            expect(() => vocabulary.hasInstance(undefined)).to.Throw(ReferenceError);
+            expect(() => vocabulary.hasInstance(null)).to.Throw(ReferenceError);
+            expect(() => vocabulary.hasInstance('')).to.Throw(ReferenceError);
+        });
+
+        it('should return false for unknown id', () => {
+            expect(vocabulary.hasInstance('IUnkown')).to.equal(false);
+        });
+
+        it('should return false when id is for class or property', () => {
+            expect(vocabulary.hasInstance('Person')).to.equal(false);
+            expect(vocabulary.hasInstance('Person/firstName')).to.equal(false);
+        });
+    });
+
+    async function loadVocabulary(): Promise<Vocabulary> {
+        const vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
+        vocabulary.context.load('http://example.org/context', testContext);
+        await vocabulary.load(testVocabulary);
+        return vocabulary;
+    }
 });

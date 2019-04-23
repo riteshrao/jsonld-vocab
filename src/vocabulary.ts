@@ -183,7 +183,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const classId = Id.expand(id);
+        const classId = Id.expand(id, this.baseIri);
         if (this._classes.has(classId)) {
             throw new Errors.DuplicateResourceError(id);
         }
@@ -206,7 +206,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const instanceId = Id.expand(id, true);
+        const instanceId = Id.expand(id, this.baseIri, true);
         if (this._instances.has(instanceId)) {
             throw new Errors.DuplicateInstanceError(id);
         }
@@ -251,7 +251,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const propertyId = Id.expand(id);
+        const propertyId = Id.expand(id, this.baseIri);
         if (this._properties.has(propertyId)) {
             throw new Errors.DuplicateResourceError(id);
         }
@@ -272,7 +272,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        return this._classes.get(Id.expand(id));
+        return this._classes.get(Id.expand(id, this.baseIri));
     }
 
     /**
@@ -286,7 +286,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const entityId = Id.expand(id);
+        const entityId = Id.expand(id, this.baseIri);
         return this._classes.get(entityId) ||
             this._properties.get(entityId) ||
             this._instances.get(entityId);
@@ -303,7 +303,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const instanceId = Id.expand(id);
+        const instanceId = Id.expand(id, this.baseIri);
         return this._instances.get(instanceId);
     }
 
@@ -325,28 +325,28 @@ export class Vocabulary implements types.Vocabulary {
             throw new Errors.ResourceNotFoundError(classRef as string, 'Class');
         }
 
-        const classV = this.graph.getVertex(Id.expand(classType.id));
+        const classV = this.graph.getVertex(Id.expand(classType.id, this.baseIri));
         if (!descendants) {
-            return classV.instances.map(instanceV => this._instances.get(Id.expand(instanceV.id)));
+            return classV.instances.map(instanceV => this._instances.get(Id.expand(instanceV.id, this.baseIri)));
         } else {
             const _that = this;
-            return new Iterable((function* getDesendantInstances() {
+            return new Iterable((function* getDescendantInstances() {
                 const tracker = new Set<string>();
                 // First the class instances and yield those results.
                 for (const instanceV of classV.instances) {
                     if (!tracker.has(instanceV.id)) {
                         tracker.add(instanceV.id);
-                        yield _that._instances.get(Id.expand(instanceV.id));
+                        yield _that._instances.get(Id.expand(instanceV.id, this.baseIri));
                     }
                 }
 
                 for (const descendantTypes of classType.descendants) {
-                    const descendantV = _that.graph.getVertex(Id.expand(descendantTypes.id));
+                    const descendantV = _that.graph.getVertex(Id.expand(descendantTypes.id, _that.baseIri));
                     if (descendantV) {
                         for (const instanceV of descendantV.instances) {
                             if (!tracker.has(instanceV.id)) {
                                 tracker.add(instanceV.id);
-                                yield _that._instances.get(Id.expand(instanceV.id));
+                                yield _that._instances.get(Id.expand(instanceV.id, _that.baseIri));
                             }
                         }
                     }
@@ -366,14 +366,14 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const expandedId = Id.expand(id);
+        const expandedId = Id.expand(id, this.baseIri);
         const propertyV = this._graph.getVertex(expandedId);
         if (!propertyV) {
             return null;
         }
 
         if (!propertyV.isType('rdf:Property')) {
-            throw new Errors.ResourceTypeMismatchError(id, 'Property', propertyV.types.map(x => Id.compact(x.id)).items().join(','));
+            throw new Errors.ResourceTypeMismatchError(id, 'Property', propertyV.types.map(x => Id.compact(x.id, this.baseIri)).items().join(','));
         }
 
         return new Property(propertyV, this);
@@ -390,7 +390,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is ${id}`);
         }
 
-        const expandedId = Id.expand(id);
+        const expandedId = Id.expand(id, this.baseIri);
         const resourceV = this._graph.getVertex(expandedId);
         if (!resourceV) {
             return null;
@@ -428,12 +428,7 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id id is '${id}'`);
         }
 
-        const vertex = this._graph.getVertex(Id.expand(id));
-        if (!vertex) {
-            return false;
-        }
-
-        return vertex.types.count() > 0 && !vertex.isType('rdfs:Class') && !vertex.isType('rdf:Property');
+        return this._instances.has(Id.expand(id, this.baseIri));
     }
 
     /**
@@ -447,26 +442,23 @@ export class Vocabulary implements types.Vocabulary {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const vertex = this._graph.getVertex(Id.expand(id));
-        if (!vertex) {
-            return false;
-        }
-
-        return vertex.types.count() > 0 && (vertex.isType('rdfs:Class') || vertex.isType('rdf:Property'));
+        const resourceId = Id.expand(id, this.baseIri);
+        return this._classes.has(resourceId) || this._properties.has(resourceId);
     }
 
     /**
      * @description Loads a vocabulary definition.
-     * @param {object[]} definitions The definitions to load
+     * @param {object[]} definition The definitions to load
      * @returns {Promise<void>}
      * @memberof Vocabulary
      */
-    async load(...definitions: object[]): Promise<void> {
+    async load(definition: object | object[]): Promise<void> {
+        const definitions = definition instanceof Array ? definition : [definition];
         if (!definitions || definitions.length === 0) {
-            throw new ReferenceError(`Invalid definitions. One or more definitions to load expected.`);
+            throw new ReferenceError(`Invalid definition. Expected one or mode definition JSON objects to load`);
         }
 
-        const vertexIds = await this._graph.load(definitions, [this.contextUri], this.baseIri);
+        const vertexIds = await this._graph.load(definition, [this.contextUri], this.baseIri);
         const classes: Vertex[] = [];
         const properties: Vertex[] = [];
         const instances: Vertex[] = [];
@@ -497,7 +489,7 @@ export class Vocabulary implements types.Vocabulary {
         for (const instanceV of instances) {
             const instance = new Instance(instanceV, this, this);
             for (const type of instanceV.types) {
-                instance.setClass(this._classes.get(Id.expand(type.id)));
+                instance.setClass(this._classes.get(Id.expand(type.id, this.baseIri)));
             }
 
             this._instances.set(instanceV.id, InstanceProxy.proxify(instance));
@@ -520,12 +512,21 @@ export class Vocabulary implements types.Vocabulary {
             throw new Errors.ResourceNotFoundError(classType as string, 'Class');
         }
 
+        if (classRef.subClasses.count() > 0) {
+            throw new Errors.InvalidOperationError('remove', classRef.id, 'Class', 'One or more classes sub-class this class.');
+        }
+
+        const classV = this._graph.getVertex(Id.expand(classRef.id, this.baseIri));
         const classProps = [...classRef.ownProperties];
         for (const property of classProps) {
             classRef.removeProperty(property, deleteOwnedProps);
         }
 
-        this._graph.removeVertex(Id.expand(classRef.id));
+        for (const instanceV of classV.instances) {
+            this._instances.delete(Id.expand(instanceV.id, this.baseIri));
+        }
+
+        this._graph.removeVertex(Id.expand(classRef.id, this.baseIri));
     }
 
     /**
@@ -543,7 +544,9 @@ export class Vocabulary implements types.Vocabulary {
             throw new Errors.ResourceNotFoundError(instanceRef as string, 'Instance');
         }
 
-        this._graph.removeVertex(Id.expand(instance.id));
+        const instanceId = Id.expand(instance.id, this.baseIri);
+        this._graph.removeVertex(instanceId);
+        this._instances.delete(instanceId);
     }
 
     /**
@@ -561,7 +564,13 @@ export class Vocabulary implements types.Vocabulary {
             throw new Errors.ResourceNotFoundError(property as string, 'Property');
         }
 
-        this._graph.removeVertex(Id.expand(propertyRef.id));
+        if (propertyRef.domains.count() > 0) {
+            throw new Errors.InvalidOperationError('remove', propertyRef.id, 'Property', 'One or more classes reference this property.');
+        }
+
+        const propertyId = Id.expand(propertyRef.id, this.baseIri);
+        this._graph.removeVertex(propertyId);
+        this._properties.delete(propertyId);
     }
 
     /**
@@ -624,7 +633,7 @@ export class Vocabulary implements types.Vocabulary {
         if (vertex.isType('rdfs:Class') || vertex.isType('rdf:Property')) {
             const resolved = this._context.resolveTerm(previousId);
             if (resolved) {
-                resolved.definition.id = Id.compact(vertex.id);
+                resolved.definition.id = Id.compact(vertex.id, this.baseIri);
             }
         }
     }

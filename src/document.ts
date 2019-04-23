@@ -51,8 +51,8 @@ export class Document {
         }
 
         this._graph.on('vertexIdChanged', (vertex, previousId) => {
-            const prevInstanceId = Id.expand(previousId);
-            const instanceId = Id.expand(vertex.id);
+            const prevInstanceId = Id.expand(previousId, this.vocabulary.baseIri);
+            const instanceId = Id.expand(vertex.id, this.vocabulary.baseIri);
             if (this._instances.has(prevInstanceId)) {
                 const instance = this._instances.get(prevInstanceId);
                 this._instances.delete(prevInstanceId);
@@ -88,11 +88,11 @@ export class Document {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        if (this.vocabulary.hasResource(id)) {
+        if (this.vocabulary.hasResource(id) || this.vocabulary.hasInstance(id)) {
             throw new Errors.InvalidInstanceIdError(id, 'A class or resource with the specified id already exists.');
         }
 
-        if (this._graph.hasVertex(id)) {
+        if (this._instances.has(id)) {
             throw new Errors.DuplicateInstanceError(id);
         }
 
@@ -148,7 +148,7 @@ export class Document {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
-        const classV = this._graph.getVertex(Id.expand(classType.id));
+        const classV = this._graph.getVertex(Id.expand(classType.id, this.vocabulary.baseIri));
         if (!descendants) {
             if (!classV) {
                 return Iterable.empty();
@@ -172,7 +172,7 @@ export class Document {
                 }
 
                 for (const descendantTypes of classType.descendants) {
-                    const descendantV = _that._graph.getVertex(Id.expand(descendantTypes.id));
+                    const descendantV = _that._graph.getVertex(Id.expand(descendantTypes.id, _that.vocabulary.baseIri));
                     if (descendantV) {
                         for (const instanceV of descendantV.instances) {
                             if (!tracker.has(instanceV.id)) {
@@ -207,7 +207,9 @@ export class Document {
             ? typeof propertyReference === 'string' ? propertyReference : propertyReference.id
             : null;
 
-        return instanceV.getIncoming(Id.expand(propertyId)).map(x => this._instances.get(x.fromVertex.id));
+        return instanceV
+            .getIncoming(Id.expand(propertyId, this.vocabulary.baseIri))
+            .map(x => this._instances.get(x.fromVertex.id));
     }
 
     /**
