@@ -15,7 +15,7 @@ import Vocabulary, { PropertyReference, ClassReference } from './types';
  */
 export class Class extends Resource {
 
-    private _properties = new Map<string, Property>();
+    private _properties = new Set<string>();
 
     /**
      * Creates an instance of Class.
@@ -26,8 +26,7 @@ export class Class extends Resource {
     constructor(vertex: Vertex, vocabulary: Vocabulary) {
         super(vertex, vocabulary);
         for (const { fromVertex: propertyV } of this.vertex.getIncoming('rdfs:domain')) {
-            const property = this.vocabulary.getProperty(propertyV.id);
-            this._properties.set(Id.expand(property.id, this.vocabulary.baseIri), property);
+            this._properties.add(propertyV.id);
         }
     }
 
@@ -74,7 +73,7 @@ export class Class extends Resource {
      * @memberof Class
      */
     get ownProperties(): Iterable<Property> {
-        return new Iterable(this._properties).map(x => x[1]);
+        return new Iterable(this._properties).map(x => this.vocabulary.getProperty(x));
     }
 
     /**
@@ -141,12 +140,14 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid property. property is ${property}`);
         }
 
-        if (this.hasProperty(property)) {
+        const propertyId = Id.expand(property.id, this.vocabulary.baseIri);
+        const propertyExists = this._properties.has(propertyId) || this.ancestors.some(x => x.hasProperty(propertyId));
+        if (propertyExists) {
             return;
         }
 
         property.setDomain(this);
-        this._properties.set(Id.expand(property.id, this.vocabulary.baseIri), property);
+        this._properties.add(Id.expand(property.id, this.vocabulary.baseIri));
     }
 
     /**
@@ -167,7 +168,7 @@ export class Class extends Resource {
 
         const property = this.vocabulary.createProperty(propertyId);
         property.setDomain(this);
-        this._properties.set(propertyId, property);
+        this._properties.add(propertyId);
         return property;
     }
 
@@ -198,17 +199,18 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid id. id is ${id}`);
         }
 
-        let property = this._properties.get(Id.expand(id, this.vocabulary.baseIri, true));
-        if (!property) {
+        const propertyId = Id.expand(id, this.vocabulary.baseIri, true);
+        if (this._properties.has(propertyId)) {
+            return this.vocabulary.getProperty(propertyId);
+        } else {
             for (const ancestor of this.ancestors) {
-                property = ancestor.getProperty(id);
+                const property = ancestor.getProperty(id);
                 if (property) {
-                    break;
+                    return property;
                 }
             }
         }
 
-        return property;
     }
 
     /**

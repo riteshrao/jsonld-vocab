@@ -44,7 +44,6 @@ describe('Vocabulary', () => {
 
         it('should get all instances in the vocabulary', () => {
             const instances = [...vocabulary.instances];
-            expect(instances.length).to.equal(4);
             expect(instances.some(x => x.id === 'Department/deptA')).to.be.true;
             expect(instances.some(x => x.id === 'Department/deptB')).to.be.true;
         });
@@ -57,7 +56,6 @@ describe('Vocabulary', () => {
 
         it('should get all properties across all classes in the vocabulary', () => {
             const properties = [...vocabulary.properties];
-            expect(properties.length).to.equal(14);
             expect(properties.some(x => x.id === 'Person/firstName')).to.be.true;
             expect(properties.some(x => x.id === 'Manager/manages')).to.be.true;
         });
@@ -258,13 +256,13 @@ describe('Vocabulary', () => {
 
         it('should return instances of class', () => {
             const instances = [...vocabulary.getInstancesOf('Manager')];
-            expect(instances.length).to.equal(1);
+            expect(instances.length).to.equal(2);
             expect(instances[0].id).to.equal('Manager/managerA');
         });
 
         it('should return descendant instances of class', () => {
             const instances = [...vocabulary.getInstancesOf('Person', true)];
-            expect(instances.length).to.equal(1);
+            expect(instances.length).to.equal(2);
             expect(instances[0].id).to.equal('Manager/managerA');
         });
     });
@@ -358,9 +356,9 @@ describe('Vocabulary', () => {
         });
 
         it('should throw when id is undefined, null or empty', () => {
-            expect(() => vocabulary.hasDataType(undefined)).to.Throw(ReferenceError);
-            expect(() => vocabulary.hasDataType(null)).to.Throw(ReferenceError);
-            expect(() => vocabulary.hasDataType('')).to.Throw(ReferenceError);
+            expect(() => vocabulary.hasDataType(undefined)).to.throw(ReferenceError);
+            expect(() => vocabulary.hasDataType(null)).to.throw(ReferenceError);
+            expect(() => vocabulary.hasDataType('')).to.throw(ReferenceError);
         });
 
         it('should return false for unknown data type', () => {
@@ -379,9 +377,9 @@ describe('Vocabulary', () => {
         });
 
         it('should throw when id is undefined, null or empty', () => {
-            expect(() => vocabulary.hasInstance(undefined)).to.Throw(ReferenceError);
-            expect(() => vocabulary.hasInstance(null)).to.Throw(ReferenceError);
-            expect(() => vocabulary.hasInstance('')).to.Throw(ReferenceError);
+            expect(() => vocabulary.hasInstance(undefined)).to.throw(ReferenceError);
+            expect(() => vocabulary.hasInstance(null)).to.throw(ReferenceError);
+            expect(() => vocabulary.hasInstance('')).to.throw(ReferenceError);
         });
 
         it('should return false for unknown id', () => {
@@ -391,6 +389,124 @@ describe('Vocabulary', () => {
         it('should return false when id is for class or property', () => {
             expect(vocabulary.hasInstance('Person')).to.equal(false);
             expect(vocabulary.hasInstance('Person/firstName')).to.equal(false);
+        });
+    });
+
+    describe('.hasResource', () => {
+        before(async () => {
+            vocabulary = await loadVocabulary();
+        });
+
+        it('should throw when id is undefined, null or empty', () => {
+            expect(() => vocabulary.hasResource(undefined)).to.throw(ReferenceError);
+            expect(() => vocabulary.hasResource(null)).to.throw(ReferenceError);
+            expect(() => vocabulary.hasResource('')).to.throw(ReferenceError);
+        });
+
+        it('should return false when resource does not exist', () => {
+            expect(vocabulary.hasResource('notFound')).to.equal(false);
+        });
+
+        it('should return false when id is instance id', () => {
+            expect(vocabulary.hasResource('Department/deptA')).to.equal(false);
+            expect(vocabulary.hasResource('http://example.org/classes/Department/deptA')).to.equal(false);
+        });
+
+        it('should return true for class id', () => {
+            expect(vocabulary.hasResource('Manager')).to.equal(true);
+        });
+
+        it('should return true for property id', () => {
+            expect(vocabulary.hasResource('Person/firstName')).to.equal(true);
+        });
+    });
+
+    describe('.removeClass', () => {
+        before(async () => {
+            vocabulary = await loadVocabulary();
+        });
+
+        it('should throw when class reference is undefined, null or empty', () => {
+            expect(() => vocabulary.removeClass(undefined)).to.throw(ReferenceError);
+            expect(() => vocabulary.removeClass(null)).to.throw(ReferenceError);
+            expect(() => vocabulary.removeClass('')).to.throw(ReferenceError);
+        });
+
+        it('should throw when class does not exist', () => {
+            expect(() => vocabulary.removeClass('DoesNotExist')).to.throw(Errors.ResourceNotFoundError);
+        });
+
+        it('should throw when class is sub-classed', () => {
+            expect(() => vocabulary.removeClass('Person')).to.throw(Errors.InvalidOperationError);
+        });
+
+        it('should remove class and all owned properties', () => {
+            vocabulary.removeClass('Department');
+            expect(vocabulary.hasResource('Department')).to.equal(false);
+            expect(vocabulary.hasResource('Department/name')).to.equal(false);
+            expect(vocabulary.hasResource('Department/location')).to.equal(false);
+            expect(vocabulary.hasResource('Department/phoneNo')).to.equal(false);
+        });
+
+        it('should remove instances of class', () => {
+            vocabulary.removeClass('Manager');
+            expect(vocabulary.hasInstance('Manager/managerA')).to.equal(false);
+            expect(vocabulary.hasInstance('Manager/managerB')).to.equal(true);
+            expect(vocabulary.getInstance('Manager/managerB').isInstanceOf('Manager')).to.equal(false);
+        });
+    });
+
+    describe('.removeInstance', () => {
+        before(async () => {
+            vocabulary = await loadVocabulary();
+        });
+
+        it('should throw when instance reference is undefined, null or empty', () => {
+            expect(() => vocabulary.removeInstance(undefined)).to.throw(ReferenceError);
+            expect(() => vocabulary.removeInstance(null)).to.throw(ReferenceError);
+            expect(() => vocabulary.removeInstance('')).to.throw(ReferenceError);
+        });
+
+        it('should throw when instance is not found', () => {
+            expect(() => vocabulary.removeInstance('DoesNotExist')).to.throw(Errors.InstanceNotFoundError);
+        });
+
+        it('should throw when attempting to remove a resource', () => {
+            expect(() => vocabulary.removeInstance('Manager')).to.throw(Errors.InstanceNotFoundError);
+            expect(() => vocabulary.removeInstance('Manager/manages')).to.throw(Errors.InstanceNotFoundError);
+        });
+
+        it('should remove instance from a resource', () => {
+            vocabulary.removeInstance('Manager/managerA');
+            expect(vocabulary.hasInstance('Manager/managerA')).to.be.false;
+        });
+    });
+
+    describe('.removeProperty', () => {
+        before(async () => {
+            vocabulary = await loadVocabulary();
+        });
+
+        it('should throw when property reference is undefined, null or empty', () => {
+            expect(() => vocabulary.removeProperty(undefined)).to.throw(ReferenceError);
+            expect(() => vocabulary.removeProperty(null)).to.throw(ReferenceError);
+            expect(() => vocabulary.removeProperty('')).to.throw(ReferenceError);
+        });
+
+        it('should throw when property does not exist', () => {
+            expect(() => vocabulary.removeProperty('DoesNotExist')).to.throw(Errors.ResourceNotFoundError);
+        });
+
+        it('should throw when property is referenced by class', () => {
+            expect(() => vocabulary.removeProperty('Manager/manages')).to.throw(Errors.InvalidOperationError);
+        });
+
+        it('should remove un-referenced property', () => {
+            vocabulary.getClass('Manager').removeProperty('Manager/manages');
+            expect(vocabulary.hasResource('Manager/manages')).to.equal(true);
+
+            vocabulary.removeProperty('Manager/manages');
+            expect(vocabulary.hasResource('Manager/manages')).to.equal(false);
         });
     });
 

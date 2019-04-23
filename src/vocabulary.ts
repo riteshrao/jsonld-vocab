@@ -298,7 +298,7 @@ export class Vocabulary implements types.Vocabulary {
      * @returns {Instance}
      * @memberof Vocabulary
      */
-    getInstance<T = any>(id: string): T & Instance {
+    getInstance<T = void>(id: string): Instance & T {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
@@ -523,10 +523,18 @@ export class Vocabulary implements types.Vocabulary {
         }
 
         for (const instanceV of classV.instances) {
-            this._instances.delete(Id.expand(instanceV.id, this.baseIri));
+            const instance: Instance = this._instances.get(instanceV.id) as Instance;
+            if (instance.classes.count() === 1) {
+                this._graph.removeVertex(instanceV.id);
+                this._instances.delete(instanceV.id);
+            } else {
+                instance.removeClass(classRef);
+            }
         }
 
-        this._graph.removeVertex(Id.expand(classRef.id, this.baseIri));
+        const classId = Id.expand(classRef.id, this.baseIri);
+        this._graph.removeVertex(classId);
+        this._classes.delete(classId);
     }
 
     /**
@@ -541,7 +549,7 @@ export class Vocabulary implements types.Vocabulary {
 
         const instance = typeof instanceRef === 'string' ? this.getInstance(instanceRef) : instanceRef;
         if (!instance) {
-            throw new Errors.ResourceNotFoundError(instanceRef as string, 'Instance');
+            throw new Errors.InstanceNotFoundError(instanceRef as string);
         }
 
         const instanceId = Id.expand(instance.id, this.baseIri);

@@ -119,7 +119,6 @@ describe('Document', () => {
 
         it('should get all descendant instances of class', () => {
             const instances = [...document.getInstancesOf('Person', true)];
-            expect(instances.length).to.equal(3);
             expect(instances.some(x => x.id === 'urn:example.org:employees/jdoe')).to.be.true;
             expect(instances.some(x => x.id === 'urn:example.org:employees/jilld')).to.be.true;
             expect(instances.some(x => x.id === 'urn:example.org:employees/janed')).to.be.true;
