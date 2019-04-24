@@ -336,7 +336,7 @@ export class Vocabulary implements types.Vocabulary {
                 for (const instanceV of classV.instances) {
                     if (!tracker.has(instanceV.id)) {
                         tracker.add(instanceV.id);
-                        yield _that._instances.get(Id.expand(instanceV.id, this.baseIri));
+                        yield _that._instances.get(Id.expand(instanceV.id, _that.baseIri));
                     }
                 }
 
