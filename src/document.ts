@@ -269,10 +269,6 @@ export class Document {
 
         for (const instance of blankTypeInstances) {
             this.options.blankTypeNormalizer(instance, this);
-            if (instance.classes.count() === 0) {
-                // Instance's class could not be resolved... Remove it from the instance list since this is a broken reference.
-                this._instances.delete(instance.id);
-            }
         }
 
         for (const instance of blankIdInstances) {
