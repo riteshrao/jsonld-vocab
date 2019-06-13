@@ -1,6 +1,11 @@
 import 'mocha';
 import { expect } from 'chai';
-import Vocabulary, { Document, Errors, Class } from '../src';
+import { 
+    Class, 
+    Document, 
+    Errors,
+    Vocabulary
+} from '../src';
 
 const testContext = require('./samples/context.json');
 const testVocab = require('./samples/vocabulary.json');
@@ -227,10 +232,15 @@ describe('Document', () => {
 
             // Project instances have @id and retain incoming references
             const instance = document.getInstance('urn:example.org:employees/janed');
-            const projects = [...instance.getProperty('Manager/project').value];
+            const projects = [...instance.getProperty('Manager/project').value.items];
             expect(projects.length).to.equal(2);
             expect(projects.some(x => x.id === 'urn:example.org:employees/janed/project/projectA')).to.be.true;
             expect(projects.some(x => x.id === 'urn:example.org:employees/janed/project/projectB')).to.be.true;
+
+            const department = document.getInstance('urn:example.org:departments/finance');
+            expect(department.getProperty('Department/name').value.get()).to.equal('Finance');
+            expect(department.getProperty('Department/name').value.get('en')).to.equal('Finance');
+            expect(department.getProperty('Department/name').value.get('fr')).to.equal('La finance');
         }
     });
 });

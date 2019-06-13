@@ -1,10 +1,11 @@
 import Iterable from 'jsiterable';
 import { Vertex, JsonldKeywords } from 'jsonld-graph';
 
+import * as Errors from './errors';
+
 import Id from './id';
 import Property from './property';
 import Resource from './resource';
-import Errors from './errors';
 import Vocabulary, { PropertyReference, ClassReference } from './types';
 
 /**
@@ -14,7 +15,6 @@ import Vocabulary, { PropertyReference, ClassReference } from './types';
  * @extends {Resource}
  */
 export class Class extends Resource {
-
     private _properties = new Set<string>();
 
     /**
@@ -37,15 +37,18 @@ export class Class extends Resource {
      * @memberof Class
      */
     get ancestors(): Iterable<Class> {
-        const _that = this;
-        return new Iterable<Class>((function* classAncestors() {
-            for (const parent of _that.parentClasses) {
-                for (const ancestor of parent.ancestors) {
-                    yield ancestor;
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
+        return new Iterable<Class>(
+            (function* classAncestors() {
+                for (const parent of that.parentClasses) {
+                    for (const ancestor of parent.ancestors) {
+                        yield ancestor;
+                    }
+                    yield parent;
                 }
-                yield parent;
-            }
-        })());
+            })()
+        );
     }
 
     /**
@@ -55,15 +58,18 @@ export class Class extends Resource {
      * @memberof Class
      */
     get descendants(): Iterable<Class> {
-        const _that = this;
-        return new Iterable<Class>((function* classDescendants() {
-            for (const child of _that.subClasses) {
-                for (const descendant of child.descendants) {
-                    yield descendant;
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
+        return new Iterable<Class>(
+            (function* classDescendants() {
+                for (const child of that.subClasses) {
+                    for (const descendant of child.descendants) {
+                        yield descendant;
+                    }
+                    yield child;
                 }
-                yield child;
-            }
-        })());
+            })()
+        );
     }
 
     /**
@@ -83,18 +89,21 @@ export class Class extends Resource {
      * @memberof Class
      */
     get properties(): Iterable<Property> {
-        const _that = this;
-        return new Iterable((function* classProperties() {
-            for (const ownProperty of _that.ownProperties) {
-                yield ownProperty;
-            }
-
-            for (const parent of _that.parentClasses) {
-                for (const parentProp of parent.properties) {
-                    yield parentProp;
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
+        return new Iterable(
+            (function* classProperties() {
+                for (const ownProperty of that.ownProperties) {
+                    yield ownProperty;
                 }
-            }
-        })());
+
+                for (const parent of that.parentClasses) {
+                    for (const parentProp of parent.properties) {
+                        yield parentProp;
+                    }
+                }
+            })()
+        );
     }
 
     /**
@@ -104,11 +113,9 @@ export class Class extends Resource {
      * @memberof Class
      */
     get subClasses(): Iterable<Class> {
-        return this.vertex
-            .getIncoming('rdfs:subClassOf')
-            .map(edge => {
-                return this.vocabulary.getClass(edge.fromVertex.id);
-            });
+        return this.vertex.getIncoming('rdfs:subClassOf').map(edge => {
+            return this.vocabulary.getClass(edge.fromVertex.id);
+        });
     }
 
     /**
@@ -118,15 +125,18 @@ export class Class extends Resource {
      * @memberof Class
      */
     get parentClasses(): Iterable<Class> {
-        const _that = this;
-        return new Iterable<Class>(function* parentClasses() {
-            const visisted = new Set<string>();
-            for (const { toVertex } of _that.vertex.getOutgoing('rdfs:subClassOf')) {
-                if (!visisted.has(toVertex.id)) {
-                    yield _that.vocabulary.getClass(toVertex.id);
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
+        return new Iterable<Class>(
+            (function* parentClasses() {
+                const visisted = new Set<string>();
+                for (const { toVertex } of that.vertex.getOutgoing('rdfs:subClassOf')) {
+                    if (!visisted.has(toVertex.id)) {
+                        yield that.vocabulary.getClass(toVertex.id);
+                    }
                 }
-            }
-        }());
+            })()
+        );
     }
 
     /**
@@ -183,9 +193,9 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid id. id is ${id}`);
         }
 
-        const _class = this.vocabulary.createClass(id);
-        _class.makeSubClassOf(this);
-        return _class;
+        const classReference = this.vocabulary.createClass(id);
+        classReference.makeSubClassOf(this);
+        return classReference;
     }
 
     /**
@@ -210,7 +220,6 @@ export class Class extends Resource {
                 }
             }
         }
-
     }
 
     /**
@@ -249,9 +258,10 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid property. property is '${property}'`);
         }
 
-        const propertyId = typeof property === 'string'
-            ? Id.expand(property, this.vocabulary.baseIri, true)
-            : Id.expand(property.id, this.vocabulary.baseIri);
+        const propertyId =
+            typeof property === 'string'
+                ? Id.expand(property, this.vocabulary.baseIri, true)
+                : Id.expand(property.id, this.vocabulary.baseIri);
         return this._properties.has(propertyId);
     }
 
@@ -266,9 +276,10 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid classReference. classREference is '${classReference}'`);
         }
 
-        const classId = typeof classReference === 'string'
-            ? Id.expand(classReference, this.vocabulary.baseIri)
-            : Id.expand(classReference.id, this.vocabulary.baseIri);
+        const classId =
+            typeof classReference === 'string'
+                ? Id.expand(classReference, this.vocabulary.baseIri)
+                : Id.expand(classReference.id, this.vocabulary.baseIri);
         return this.descendants.some(x => Id.expand(x.id, this.vocabulary.baseIri) === classId);
     }
 
@@ -283,9 +294,10 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
         }
 
-        const classId = typeof classType === 'string'
-            ? Id.expand(classType, this.vocabulary.baseIri)
-            : Id.expand(classType.id, this.vocabulary.baseIri);
+        const classId =
+            typeof classType === 'string'
+                ? Id.expand(classType, this.vocabulary.baseIri)
+                : Id.expand(classType.id, this.vocabulary.baseIri);
 
         return this.ancestors.some(x => Id.expand(x.id, this.vocabulary.baseIri) === classId);
     }
@@ -301,13 +313,12 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid classType. classType is '${classType}'`);
         }
 
-        const classId = typeof classType === 'string'
-            ? Id.expand(classType, this.vocabulary.baseIri, true)
-            : Id.expand(classType.id, this.vocabulary.baseIri);
+        const classId =
+            typeof classType === 'string'
+                ? Id.expand(classType, this.vocabulary.baseIri, true)
+                : Id.expand(classType.id, this.vocabulary.baseIri);
 
-        return this.vertex
-            .getOutgoing('rdfs:subClassOf')
-            .some(x => x.toVertex.id === classId);
+        return this.vertex.getOutgoing('rdfs:subClassOf').some(x => x.toVertex.id === classId);
     }
 
     /**
@@ -320,7 +331,8 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid classReference. classReference is ${classReference}`);
         }
 
-        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType =
+            typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
         if (!classType) {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
@@ -340,7 +352,8 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid property. property is '${propertyReference}'`);
         }
 
-        const propertyRef = typeof propertyReference === 'string' ? this.getProperty(propertyReference) : propertyReference;
+        const propertyRef =
+            typeof propertyReference === 'string' ? this.getProperty(propertyReference) : propertyReference;
         if (!propertyRef) {
             throw new Errors.ResourceNotFoundError(propertyReference as string, 'Property');
         }
@@ -364,7 +377,8 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}'`);
         }
 
-        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType =
+            typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
         if (!classType) {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
@@ -380,6 +394,7 @@ export class Class extends Resource {
      * @returns {Promise<any>}
      * @memberof Class
      */
+    // tslint:disable-next-line: promise-function-async
     toJson(includeProps: boolean = false): Promise<any> {
         if (!includeProps) {
             return this.vertex.toJson({
@@ -434,9 +449,11 @@ export class Class extends Resource {
      */
     static create(id: string, vocabulary: Vocabulary): Class {
         const normalizedId = Id.expand(id, vocabulary.baseIri, true);
-        if (vocabulary.hasResource(normalizedId) ||
+        if (
+            vocabulary.hasResource(normalizedId) ||
             vocabulary.hasDataType(normalizedId) ||
-            vocabulary.hasInstance(normalizedId)) {
+            vocabulary.hasInstance(normalizedId)
+        ) {
             throw new Errors.DuplicateResourceError(id);
         }
 

@@ -20,13 +20,13 @@
             {
                 "@id": "urn:example.org:departments/finance",
                 "@type": "Department",
-                "name": "Finance",
+                "deptName": { "en": "Finance", "fr": "La finance"},
                 "deptLocation": "urn:example.org:locations/nashua"
             },
             {
                 "@id": "urn:example.org:departments/hr",
                 "@type": "Department",
-                "name": "Human Resources",
+                "deptName": { "en": "Human Resources", "fr": "Ressources humaines" },
                 "deptLocation": "urn:example.org:locations/scranton"
             }
         ]

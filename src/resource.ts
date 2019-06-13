@@ -1,6 +1,7 @@
 import { Vertex } from 'jsonld-graph';
 
-import Errors from './errors';
+import * as Errors from './errors';
+
 import id from './id';
 import Vocabulary from './types';
 import { ContextTerm } from './context';
@@ -12,9 +13,7 @@ import { ContextTerm } from './context';
  * @class Resource
  */
 export abstract class Resource {
-    protected constructor(
-        protected readonly vertex: Vertex,
-        protected readonly vocabulary: Vocabulary) { }
+    protected constructor(protected readonly vertex: Vertex, protected readonly vocabulary: Vocabulary) {}
 
     /**
      * @description Gets the id of the resource.

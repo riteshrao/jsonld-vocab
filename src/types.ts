@@ -52,7 +52,6 @@ export interface Vocabulary extends InstanceProvider {
     removeInstance(instanceRef: InstanceReference): void;
     removeProperty(propertyRef: PropertyReference): void;
     removeResource(resourceRef: ResourceReference): void;
-    removeResource(resource: string | Resource): void;
 }
 
 export default Vocabulary;

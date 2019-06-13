@@ -1,9 +1,10 @@
 import Iterable from 'jsiterable';
 import { Vertex } from 'jsonld-graph';
 
+import * as Errors from './errors';
+
 import { ValueType, ContainerType } from './context';
 import DataType from './dataType';
-import Errors from './errors';
 import Id from './id';
 import Resource from './resource';
 import Vocabulary from './types';
@@ -39,9 +40,7 @@ export class Property extends Resource {
      * @memberof Property
      */
     get domains(): Iterable<Resource> {
-        return this.vertex
-            .getOutgoing('rdfs:domain')
-            .map(edge => this.vocabulary.getResource(edge.toVertex.id));
+        return this.vertex.getOutgoing('rdfs:domain').map(edge => this.vocabulary.getResource(edge.toVertex.id));
     }
 
     /**
@@ -53,9 +52,11 @@ export class Property extends Resource {
     get range(): Iterable<Resource | DataType> {
         return this.vertex
             .getOutgoing('rdfs:range')
-            .map(edge => this.vocabulary.hasResource(edge.toVertex.id)
-                ? this.vocabulary.getResource(edge.toVertex.id)
-                : DataType.parse(edge.toVertex.id));
+            .map(edge =>
+                this.vocabulary.hasResource(edge.toVertex.id)
+                    ? this.vocabulary.getResource(edge.toVertex.id)
+                    : DataType.parse(edge.toVertex.id)
+            );
     }
 
     /**
@@ -78,13 +79,12 @@ export class Property extends Resource {
             throw new ReferenceError(`Invalid resource. resource is ${resource}`);
         }
 
-        const resourceId = typeof resource === 'string'
-            ? Id.expand(resource, this.vocabulary.baseIri, true)
-            : Id.expand(resource.id, this.vocabulary.baseIri);
+        const resourceId =
+            typeof resource === 'string'
+                ? Id.expand(resource, this.vocabulary.baseIri, true)
+                : Id.expand(resource.id, this.vocabulary.baseIri);
 
-        return this.vertex
-            .getOutgoing('rdfs:domain')
-            .some(edge => edge.toVertex.id === resourceId);
+        return this.vertex.getOutgoing('rdfs:domain').some(edge => edge.toVertex.id === resourceId);
     }
 
     /**
@@ -98,13 +98,12 @@ export class Property extends Resource {
             throw new ReferenceError(`Invalid resource. resource is ${resource}`);
         }
 
-        const resourceId = typeof resource === 'string'
-            ? Id.expand(resource, this.vocabulary.baseIri, true)
-            : Id.expand(resource.id, this.vocabulary.baseIri);
+        const resourceId =
+            typeof resource === 'string'
+                ? Id.expand(resource, this.vocabulary.baseIri, true)
+                : Id.expand(resource.id, this.vocabulary.baseIri);
 
-        return this.vertex
-            .getOutgoing('rdfs:range')
-            .some(edge => edge.toVertex.id === resourceId);
+        return this.vertex.getOutgoing('rdfs:range').some(edge => edge.toVertex.id === resourceId);
     }
 
     /**
@@ -119,9 +118,10 @@ export class Property extends Resource {
         }
 
         for (const resource of resources) {
-            const resourceId = typeof resource === 'string'
-                ? Id.expand(resource, this.vocabulary.baseIri, true)
-                : Id.expand(resource.id, this.vocabulary.baseIri);
+            const resourceId =
+                typeof resource === 'string'
+                    ? Id.expand(resource, this.vocabulary.baseIri, true)
+                    : Id.expand(resource.id, this.vocabulary.baseIri);
 
             if (!this.vocabulary.hasResource(resourceId)) {
                 throw new Errors.ResourceNotFoundError(resourceId, 'Resource');
@@ -148,9 +148,10 @@ export class Property extends Resource {
         }
 
         for (const resource of resources) {
-            const resourceId = typeof resource === 'string'
-                ? Id.expand(resource, this.vocabulary.baseIri, true)
-                : Id.expand(resource.id, this.vocabulary.baseIri);
+            const resourceId =
+                typeof resource === 'string'
+                    ? Id.expand(resource, this.vocabulary.baseIri, true)
+                    : Id.expand(resource.id, this.vocabulary.baseIri);
 
             if (!this.vocabulary.hasResource(resourceId) && !this.vocabulary.hasDataType(resourceId)) {
                 throw new Errors.ResourceNotFoundError(resourceId, 'Resource');
@@ -175,9 +176,10 @@ export class Property extends Resource {
             throw new ReferenceError(`Invalid resource. resource is '${resource}'`);
         }
 
-        const resourceId = typeof resource === 'string'
-            ? Id.expand(resource, this.vocabulary.baseIri, true)
-            : Id.expand(resource.id, this.vocabulary.baseIri);
+        const resourceId =
+            typeof resource === 'string'
+                ? Id.expand(resource, this.vocabulary.baseIri, true)
+                : Id.expand(resource.id, this.vocabulary.baseIri);
 
         this.vertex.removeOutgoing('rdfs:domain', resourceV => resourceV.id === resourceId);
     }
@@ -192,9 +194,10 @@ export class Property extends Resource {
             throw new ReferenceError(`Invalid resource. resource is '${resource}'`);
         }
 
-        const resourceId = typeof resource === 'string'
-            ? Id.expand(resource, this.vocabulary.baseIri, true)
-            : Id.expand(resource.id, this.vocabulary.baseIri);
+        const resourceId =
+            typeof resource === 'string'
+                ? Id.expand(resource, this.vocabulary.baseIri, true)
+                : Id.expand(resource.id, this.vocabulary.baseIri);
 
         this.vertex.removeOutgoing('rdfs:range', resourceV => resourceV.id === resourceId);
         return this;
@@ -205,6 +208,7 @@ export class Property extends Resource {
      * @returns {Promise<any>}
      * @memberof Property
      */
+    // tslint:disable-next-line: promise-function-async
     toJson(): Promise<any> {
         return this.vertex.toJson({
             base: this.vocabulary.baseIri,
@@ -232,7 +236,11 @@ export class Property extends Resource {
      */
     static create(id: string, vocabulary: Vocabulary): Property {
         const expandedId = Id.expand(id, vocabulary.baseIri, true);
-        if (vocabulary.hasResource(expandedId) || vocabulary.hasDataType(expandedId) || vocabulary.hasInstance(expandedId)) {
+        if (
+            vocabulary.hasResource(expandedId) ||
+            vocabulary.hasDataType(expandedId) ||
+            vocabulary.hasInstance(expandedId)
+        ) {
             throw new Errors.DuplicateResourceError(id);
         }
 

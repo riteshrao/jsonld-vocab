@@ -1,10 +1,9 @@
 import * as urijs from 'uri-js';
-import Errors from './errors';
+import * as Errors from './errors';
 
-const resourceIdPattern = /^[a-zA-Z][a-zA-Z0-9_//]*[a-zA-Z0-9]$/;
+const resourceIdPattern = /^[a-zA-Z][a-zA-Z0-9_//:]*[a-zA-Z0-9]$/; // Supports both HTTP/s and URN formats
 
 export namespace Id {
-
     /**
      * @description Expands a vocabulary id.
      * @export

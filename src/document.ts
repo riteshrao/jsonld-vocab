@@ -2,7 +2,8 @@ import Iterable from 'jsiterable';
 import JsonldGraph, { Vertex } from 'jsonld-graph';
 import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
 
-import Errors from './errors';
+import * as Errors from './errors';
+
 import Id from './id';
 import Instance from './instance';
 import InstanceProxy from './instanceProxy';
@@ -17,10 +18,10 @@ export type InstanceNormalizer = (instance: Instance, document: Document) => voi
 /**
  *  Options used by a Document.
  */
-export type DocumentOptions = {
+export interface DocumentOptions {
     blankIdNormalizer?: InstanceNormalizer;
-    blankTypeNormalizer?: InstanceNormalizer
-};
+    blankTypeNormalizer?: InstanceNormalizer;
+}
 
 /**
  * @description A document based on a vocabulary.
@@ -29,6 +30,7 @@ export type DocumentOptions = {
  */
 export class Document {
     private readonly _graph: JsonldGraph;
+    private readonly _options: DocumentOptions;
     private readonly _instances = new Map<string, Instance & any>();
 
     /**
@@ -36,13 +38,12 @@ export class Document {
      * @param {Vocabulary} vocabulary The vocabulary used by the document for creating and working with instances.
      * @memberof Document
      */
-    constructor(
-        public readonly vocabulary: Vocabulary,
-        private readonly options: DocumentOptions = {}) {
+    constructor(public readonly vocabulary: Vocabulary, options: DocumentOptions = {}) {
         if (!vocabulary) {
             throw new ReferenceError(`Invalid vocabulary. vocabulary is '${vocabulary}'`);
         }
 
+        this._options = options;
         this._graph = new JsonldGraph();
         this._graph.addPrefix('vocab', vocabulary.baseIri);
 
@@ -97,10 +98,15 @@ export class Document {
         }
 
         if (this.vocabulary.hasInstance(id)) {
-            throw new Errors.InvalidInstanceIdError(id, 'Another instance with the id has already been defined in the vocabulary');
+            throw new Errors.InvalidInstanceIdError(
+                id,
+                'Another instance with the id has already been defined in the vocabulary'
+            );
         }
 
-        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType =
+            typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+
         if (!classType) {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
@@ -143,7 +149,9 @@ export class Document {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}`);
         }
 
-        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType =
+            typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+
         if (!classType) {
             throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
         }
@@ -153,36 +161,39 @@ export class Document {
             if (!classV) {
                 return Iterable.empty();
             } else {
-                return classV
-                    .instances
-                    .map(vertex => this._instances.get(vertex.id));
+                return classV.instances.map(vertex => this._instances.get(vertex.id));
             }
         } else {
-            const _that = this;
-            return new Iterable((function* getDescendantInstances() {
-                const tracker = new Set<string>();
-                if (classV) {
-                    // First the class instances and yield those results.
-                    for (const instanceV of classV.instances) {
-                        if (!tracker.has(instanceV.id)) {
-                            tracker.add(instanceV.id);
-                            yield _that._instances.get(instanceV.id);
-                        }
-                    }
-                }
-
-                for (const descendantTypes of classType.descendants) {
-                    const descendantV = _that._graph.getVertex(Id.expand(descendantTypes.id, _that.vocabulary.baseIri));
-                    if (descendantV) {
-                        for (const instanceV of descendantV.instances) {
+            // tslint:disable-next-line:no-this-assignment
+            const that = this;
+            return new Iterable(
+                (function* getDescendantInstances() {
+                    const tracker = new Set<string>();
+                    if (classV) {
+                        // First the class instances and yield those results.
+                        for (const instanceV of classV.instances) {
                             if (!tracker.has(instanceV.id)) {
                                 tracker.add(instanceV.id);
-                                yield _that._instances.get(instanceV.id);
+                                yield that._instances.get(instanceV.id);
                             }
                         }
                     }
-                }
-            })());
+
+                    for (const descendantTypes of classType.descendants) {
+                        const descendantV = that._graph.getVertex(
+                            Id.expand(descendantTypes.id, that.vocabulary.baseIri)
+                        );
+                        if (descendantV) {
+                            for (const instanceV of descendantV.instances) {
+                                if (!tracker.has(instanceV.id)) {
+                                    tracker.add(instanceV.id);
+                                    yield that._instances.get(instanceV.id);
+                                }
+                            }
+                        }
+                    }
+                })()
+            );
         }
     }
 
@@ -204,7 +215,9 @@ export class Document {
         }
 
         const propertyId = propertyReference
-            ? typeof propertyReference === 'string' ? propertyReference : propertyReference.id
+            ? typeof propertyReference === 'string'
+                ? propertyReference
+                : propertyReference.id
             : null;
 
         return instanceV
@@ -251,7 +264,7 @@ export class Document {
             const instance = InstanceProxy.proxify(new Instance(vertex, this.vocabulary, this));
             this._instances.set(instance.id, instance);
 
-            if (vertex.types.count() === 0 && this.options.blankTypeNormalizer) {
+            if (vertex.types.count() === 0 && this._options.blankTypeNormalizer) {
                 blankTypeInstances.push(instance);
             } else {
                 for (const typeV of vertex.types) {
@@ -262,18 +275,18 @@ export class Document {
                 }
             }
 
-            if (vertex.isBlankNode && this.options.blankIdNormalizer) {
+            if (vertex.isBlankNode && this._options.blankIdNormalizer) {
                 blankIdInstances.push(instance);
             }
         }
 
         for (const instance of blankTypeInstances) {
-            this.options.blankTypeNormalizer(instance, this);
+            this._options.blankTypeNormalizer(instance, this);
         }
 
         for (const instance of blankIdInstances) {
             const previousId = instance.id;
-            this.options.blankIdNormalizer(instance, this);
+            this._options.blankIdNormalizer(instance, this);
             if (previousId !== instance.id) {
                 this._instances.delete(previousId);
                 this._instances.set(instance.id, instance);
@@ -312,7 +325,8 @@ export class Document {
      * @param {JsonFormatOptions} [options] Optional JSON formatting options.
      * @memberof Document
      */
-    toJson(options?: JsonFormatOptions) {
+    // tslint:disable-next-line: promise-function-async
+    toJson(options?: JsonFormatOptions): Promise<any> {
         return this._graph.toJson(options);
     }
 

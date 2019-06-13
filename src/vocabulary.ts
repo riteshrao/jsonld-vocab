@@ -1,11 +1,11 @@
 import Iterable from 'jsiterable';
 import JsonldGraph, { JsonldKeywords, Vertex } from 'jsonld-graph';
 
+import * as Errors from './errors';
 import * as types from './types';
 
 import Class from './class';
 import Context from './context';
-import Errors from './errors';
 import Id from './id';
 import InstanceProxy from './instanceProxy';
 import Property from './property';
@@ -35,14 +35,14 @@ export class Vocabulary implements types.Vocabulary {
     constructor(public readonly baseIri: string, public readonly contextUri: string) {
         this._graph = new JsonldGraph();
         this._graph.addPrefix('vocab', baseIri);
-        this._graph.addPrefix('rdf', Context.RdfNamespace);
-        this._graph.addPrefix('rdfs', Context.RdfsNamespace);
-        this._graph.addPrefix('xsd', Context.XSDNamesapce);
+        this._graph.addPrefix('rdf', Context.rdfNamespace);
+        this._graph.addPrefix('rdfs', Context.rdfsNamespace);
+        this._graph.addPrefix('xsd', Context.xsdNamespace);
         this._graph.addContext(contextUri, {
             [JsonldKeywords.context]: {
-                rdf: Context.RdfNamespace,
-                rdfs: Context.RdfsNamespace,
-                xsd: Context.XSDNamesapce,
+                rdf: Context.rdfNamespace,
+                rdfs: Context.rdfsNamespace,
+                xsd: Context.xsdNamespace,
                 Class: 'rdfs:Class',
                 class: 'rdfs:Class',
                 Comment: 'rdfs:comment',
@@ -160,16 +160,19 @@ export class Vocabulary implements types.Vocabulary {
      * @memberof Vocabulary
      */
     get resources(): Iterable<Resource> {
-        const _that = this;
-        return new Iterable((function* resourcesIterable() {
-            for (const [, classType] of _that._classes) {
-                yield classType;
-            }
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
+        return new Iterable(
+            (function* resourcesIterable() {
+                for (const [, classType] of that._classes) {
+                    yield classType;
+                }
 
-            for (const [, property] of _that._properties) {
-                yield property;
-            }
-        })());
+                for (const [, property] of that._properties) {
+                    yield property;
+                }
+            })()
+        );
     }
 
     /**
@@ -287,9 +290,7 @@ export class Vocabulary implements types.Vocabulary {
         }
 
         const entityId = Id.expand(id, this.baseIri);
-        return this._classes.get(entityId) ||
-            this._properties.get(entityId) ||
-            this._instances.get(entityId);
+        return this._classes.get(entityId) || this._properties.get(entityId) || this._instances.get(entityId);
     }
 
     /**
@@ -329,29 +330,32 @@ export class Vocabulary implements types.Vocabulary {
         if (!descendants) {
             return classV.instances.map(instanceV => this._instances.get(Id.expand(instanceV.id, this.baseIri)));
         } else {
-            const _that = this;
-            return new Iterable((function* getDescendantInstances() {
-                const tracker = new Set<string>();
-                // First the class instances and yield those results.
-                for (const instanceV of classV.instances) {
-                    if (!tracker.has(instanceV.id)) {
-                        tracker.add(instanceV.id);
-                        yield _that._instances.get(Id.expand(instanceV.id, _that.baseIri));
+            // tslint:disable-next-line:no-this-assignment
+            const that = this;
+            return new Iterable(
+                (function* getDescendantInstances() {
+                    const tracker = new Set<string>();
+                    // First the class instances and yield those results.
+                    for (const instanceV of classV.instances) {
+                        if (!tracker.has(instanceV.id)) {
+                            tracker.add(instanceV.id);
+                            yield that._instances.get(Id.expand(instanceV.id, that.baseIri));
+                        }
                     }
-                }
 
-                for (const descendantTypes of classType.descendants) {
-                    const descendantV = _that.graph.getVertex(Id.expand(descendantTypes.id, _that.baseIri));
-                    if (descendantV) {
-                        for (const instanceV of descendantV.instances) {
-                            if (!tracker.has(instanceV.id)) {
-                                tracker.add(instanceV.id);
-                                yield _that._instances.get(Id.expand(instanceV.id, _that.baseIri));
+                    for (const descendantTypes of classType.descendants) {
+                        const descendantV = that.graph.getVertex(Id.expand(descendantTypes.id, that.baseIri));
+                        if (descendantV) {
+                            for (const instanceV of descendantV.instances) {
+                                if (!tracker.has(instanceV.id)) {
+                                    tracker.add(instanceV.id);
+                                    yield that._instances.get(Id.expand(instanceV.id, that.baseIri));
+                                }
                             }
                         }
                     }
-                }
-            })());
+                })()
+            );
         }
     }
 
@@ -373,7 +377,14 @@ export class Vocabulary implements types.Vocabulary {
         }
 
         if (!propertyV.isType('rdf:Property')) {
-            throw new Errors.ResourceTypeMismatchError(id, 'Property', propertyV.types.map(x => Id.compact(x.id, this.baseIri)).items().join(','));
+            throw new Errors.ResourceTypeMismatchError(
+                id,
+                'Property',
+                propertyV.types
+                    .map(x => Id.compact(x.id, this.baseIri))
+                    .items()
+                    .join(',')
+            );
         }
 
         return new Property(propertyV, this);
@@ -397,7 +408,14 @@ export class Vocabulary implements types.Vocabulary {
         }
 
         if (!resourceV.isType('rdfs:Class') && !resourceV.isType('rdf:Property')) {
-            throw new Errors.ResourceTypeMismatchError(id, 'Class | Property', resourceV.types.map(x => x.id).items().join(','));
+            throw new Errors.ResourceTypeMismatchError(
+                id,
+                'Class | Property',
+                resourceV.types
+                    .map(x => x.id)
+                    .items()
+                    .join(',')
+            );
         }
 
         return this._createResource(resourceV);
@@ -513,7 +531,12 @@ export class Vocabulary implements types.Vocabulary {
         }
 
         if (classRef.subClasses.count() > 0) {
-            throw new Errors.InvalidOperationError('remove', classRef.id, 'Class', 'One or more classes sub-class this class.');
+            throw new Errors.InvalidOperationError(
+                'remove',
+                classRef.id,
+                'Class',
+                'One or more classes sub-class this class.'
+            );
         }
 
         const classV = this._graph.getVertex(Id.expand(classRef.id, this.baseIri));
@@ -573,7 +596,12 @@ export class Vocabulary implements types.Vocabulary {
         }
 
         if (propertyRef.domains.count() > 0) {
-            throw new Errors.InvalidOperationError('remove', propertyRef.id, 'Property', 'One or more classes reference this property.');
+            throw new Errors.InvalidOperationError(
+                'remove',
+                propertyRef.id,
+                'Property',
+                'One or more classes reference this property.'
+            );
         }
 
         const propertyId = Id.expand(propertyRef.id, this.baseIri);
@@ -608,6 +636,7 @@ export class Vocabulary implements types.Vocabulary {
      * @returns {Promise<any>}
      * @memberof Vocabulary
      */
+    // tslint:disable-next-line: promise-function-async
     toJson(): Promise<any> {
         return this.graph.toJson({
             base: this.baseIri,
@@ -652,7 +681,13 @@ export class Vocabulary implements types.Vocabulary {
         } else if (resourceV.isType('rdf:Property')) {
             return new Property(resourceV, this);
         } else {
-            throw new Errors.UnsupportedResourceTypeError(resourceV.id, resourceV.types.map(x => x.id).items().join(','));
+            throw new Errors.UnsupportedResourceTypeError(
+                resourceV.id,
+                resourceV.types
+                    .map(x => x.id)
+                    .items()
+                    .join(',')
+            );
         }
     }
 }
