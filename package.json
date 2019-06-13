@@ -1,6 +1,6 @@
 {
     "name": "jsonld-vocab",
-    "version": "3.0.0-beta.2",
+    "version": "3.0.0-beta.3",
     "description": "Build, parse and inspect vocabularies defined as RDF classes in JSON-LD form and create documents using vocabularies",
     "main": "./lib/index.js",
     "scripts": {
@@ -8,7 +8,7 @@
         "coverage": "npm run test && opener ./coverage/index.html",
         "lint": "tslint --config tslint.json --project tsconfig.json 'src/**/*'",
         "pretty": "prettier --config .prettierrc.yml --write \"src/**/*.ts\"",
-        "build": "npm run pretty && npm run tslint && tsc",
+        "build": "npm run pretty && npm run lint && tsc",
         "test": "nyc mocha",
         "prepublishOnly": "npm run clean && npm run build && npm run test"
     },

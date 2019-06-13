@@ -1,4 +1,5 @@
 import Iterable from 'jsiterable';
+import LibIterable from 'jsiterable/lib/types';
 import { Vertex } from 'jsonld-graph';
 import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
 
@@ -476,7 +477,7 @@ export class InstanceProperty {
  * @export
  * @class ContainerPropertyValues
  */
-export class ContainerPropertyValues {
+export class ContainerPropertyValues implements LibIterable<any> {
     private readonly _normalizedId: string;
     private readonly _vertex: Vertex;
     private readonly _property: Property;
@@ -496,6 +497,10 @@ export class ContainerPropertyValues {
         this._normalizedId = Id.expand(this._property.id, this._vocabulary.baseIri);
     }
 
+    [Symbol.iterator](): Iterator<{ value: any; language?: string }> {
+        return this.items[Symbol.iterator]();
+    }
+
     /**
      * @description Gets the count of items in the container.
      * @readonly
@@ -510,8 +515,8 @@ export class ContainerPropertyValues {
      * @readonly
      * @memberof ContainerPropertyValues
      */
-    get items() {
-        return this._vertex.getAttributeValues<any>(this._normalizedId);
+    get items(): Iterable<{ value: any; language?: string }> {
+        return new Iterable(this._vertex.getAttributeValues<any>(this._normalizedId));
     }
 
     /**
@@ -579,7 +584,7 @@ export class ContainerPropertyValues {
  * @class ContainerPropertyReferences
  * @template T
  */
-export class ContainerPropertyReferences<T extends Instance> {
+export class ContainerPropertyReferences<T extends Instance> implements LibIterable<T> {
     private readonly _normalizedId: string;
     private readonly _property: Property;
     private readonly _vertex: Vertex;
@@ -613,6 +618,10 @@ export class ContainerPropertyReferences<T extends Instance> {
         this._instanceProvider = instanceProvider;
         this._property = property;
         this._normalizedId = Id.expand(this._property.id, this._vocabulary.baseIri);
+    }
+
+    [Symbol.iterator](): Iterator<T> {
+        return this.items[Symbol.iterator]();
     }
 
     /**
