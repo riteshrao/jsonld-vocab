@@ -10,8 +10,7 @@ import { ContainerType } from './context';
 import Instance from './instance';
 import Class from './class';
 
-export class ContainerPropertyValues<T extends string | boolean | number | Instance | Class>
-    implements LibIterable<any> {
+export class ContainerPropertyValues<T> implements LibIterable<any> {
     private readonly _instanceProvider: types.InstanceProvider;
     private readonly _property: Property;
     private readonly _vocabulary: types.Vocabulary;
@@ -36,7 +35,7 @@ export class ContainerPropertyValues<T extends string | boolean | number | Insta
      * @returns {Iterator<any>}
      * @memberof ContainerPropertyValues
      */
-    *[Symbol.iterator](): Iterator<any> {
+    *[Symbol.iterator](): Iterator<T> {
         const attributeValues = this._vertex.getAttributeValues<any>(this._normalizedId);
         for (const attributeValue of attributeValues) {
             if (this._property.container === ContainerType.Language) {
@@ -75,7 +74,7 @@ export class ContainerPropertyValues<T extends string | boolean | number | Insta
      * @param {string} [language] Optional language of the value to add.
      * @memberof InstancePropertyValues
      */
-    addValue(value: T, language?: string): void {
+    addValue<T extends string | number | boolean>(value: T, language?: string): void {
         if (value === null || value === undefined || value === '') {
             throw new Errors.InstancePropertyValueError(
                 Id.compact(this._vertex.id, this._vocabulary.baseIri),
@@ -152,7 +151,7 @@ export class ContainerPropertyValues<T extends string | boolean | number | Insta
      * @returns {boolean}
      * @memberof ContainerPropertyValues
      */
-    hasValue(value: T, language?: string): boolean {
+    hasValue<T extends string | number | boolean>(value: T, language?: string): boolean {
         if (value === null || value === undefined || value === '') {
             throw new Errors.InstancePropertyValueError(
                 Id.compact(this._vertex.id, this._vocabulary.baseIri),
@@ -190,7 +189,7 @@ export class ContainerPropertyValues<T extends string | boolean | number | Insta
      * @param {T} value The value to remove.
      * @memberof ContainerPropertyValues
      */
-    removeValue(value: T): void {
+    removeValue<T extends string | number | boolean>(value: T): void {
         if (value === null || value === undefined || value === '') {
             throw new Errors.InstancePropertyValueError(
                 Id.compact(this._vertex.id, this._vocabulary.baseIri),

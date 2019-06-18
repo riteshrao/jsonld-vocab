@@ -105,7 +105,12 @@ export class InstanceProperty {
      */
     get value(): any {
         if (this._property.container) {
-            return new ContainerPropertyValues(this._vertex, this._property, this._vocabulary, this._instanceProvider);
+            return new ContainerPropertyValues<any>(
+                this._vertex,
+                this._property,
+                this._vocabulary,
+                this._instanceProvider
+            );
         } else {
             const instanceRef = this._vertex.getOutgoing(this._normalizedId).first();
             if (instanceRef) {
