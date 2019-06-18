@@ -1,12 +1,12 @@
+// tslint:disable-next-line:no-import-side-effect
 import 'mocha';
 import { expect } from 'chai';
 import { 
-    ContainerPropertyValues, 
     Document,
     Errors, 
     Instance,
+    ContainerPropertyValues,
     Vocabulary,
-    ContainerPropertyReferences
 } from '../src';
 
 const testContext = require('./samples/context.json');
@@ -310,7 +310,7 @@ describe('Instance', () => {
 
         it('should return json with containers as arrays', async () => {
             const instance = document.getInstance<Manager>('urn:example.org:employees/jdoe');
-            instance.manages.add(document.getInstance('urn:example.org:employees/jilld'));
+            instance.manages.addReference(document.getInstance('urn:example.org:employees/jilld'));
 
             const json = await instance.toJson({ context: 'http://example.org/context' });
             expect(json).to.be.ok;
@@ -358,14 +358,14 @@ describe('Instance', () => {
         it('can get and set primitive property set', () => {
             const instance = document.getInstance('urn:example.org:departments/testDepartment1');
             const phoneNo = instance.getProperty('Department/phoneNo');
-            phoneNo.value.add('1234');
-            phoneNo.value.add('5678');
+            phoneNo.value.addValue('1234');
+            phoneNo.value.addValue('5678');
 
-            const values = [...phoneNo.value.items];
+            const values = [...phoneNo.value];
             
             expect(values.length).to.equal(2);
-            expect(values[0].value).to.equal('1234');
-            expect(values[1].value).to.equal('5678');
+            expect(values[0]).to.equal('1234');
+            expect(values[1]).to.equal('5678');
 
             phoneNo.value.clear();
             expect(phoneNo.value.count).to.equal(0);
@@ -373,12 +373,12 @@ describe('Instance', () => {
 
         it('can get and set primitive property set using context term', () => {
             const instance = document.getInstance<Department>('urn:example.org:departments/testDepartment2');
-            instance.phoneNo.add('1234');
-            instance.phoneNo.add('5678');
+            instance.phoneNo.addValue('1234');
+            instance.phoneNo.addValue('5678');
 
             expect(instance.phoneNo.count).to.equal(2);
-            expect([...instance.phoneNo.items][0].value).to.equal('1234');
-            expect([...instance.phoneNo.items][1].value).to.equal('5678');
+            expect([...instance.phoneNo][0]).to.equal('1234');
+            expect([...instance.phoneNo][1]).to.equal('5678');
 
             instance.phoneNo.clear();
             expect(instance.phoneNo.count).to.equal(0);
@@ -427,15 +427,15 @@ describe('Instance', () => {
             const testEmployee2 = document.getInstance<Employee>('urn:example.org:employees/testEmployee2');
             const managesProperty = instance.getProperty('Manager/manages');
 
-            managesProperty.value.add(testEmployee1);
-            managesProperty.value.add(testEmployee2);
+            managesProperty.value.addReference(testEmployee1);
+            managesProperty.value.addReference(testEmployee2);
 
             expect(managesProperty.value.count).to.equal(2);
-            expect([...managesProperty.value.items][0]).to.be.instanceOf(Instance);
-            expect([...managesProperty.value.items][1]).to.be.instanceOf(Instance);
+            expect([...managesProperty.value][0]).to.be.instanceOf(Instance);
+            expect([...managesProperty.value][1]).to.be.instanceOf(Instance);
 
-            expect(managesProperty.value.has('urn:example.org:employees/testEmployee1')).to.be.true;
-            expect(managesProperty.value.has('urn:example.org:employees/testEmployee2')).to.be.true;
+            expect(managesProperty.value.hasReference('urn:example.org:employees/testEmployee1')).to.be.true;
+            expect(managesProperty.value.hasReference('urn:example.org:employees/testEmployee2')).to.be.true;
 
             expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(1);
             expect(testEmployee2.getReferrers('Manager/manages').count()).to.equal(1);
@@ -443,10 +443,10 @@ describe('Instance', () => {
             expect(testEmployee1.getReferrers('Manager/manages').some(x => x.id === 'urn:example.org:employees/testManager1')).to.be.true;
             expect(testEmployee2.getReferrers('Manager/manages').some(x => x.id === 'urn:example.org:employees/testManager1')).to.be.true;
 
-            managesProperty.value.remove(testEmployee1);
+            managesProperty.value.removeReference(testEmployee1);
             expect(managesProperty.value.count).to.equal(1);
-            expect([...managesProperty.value.items].some(x => x.id === 'urn:example.org:employees/testEmployee2')).to.be.true;
-            expect([...managesProperty.value.items].some(x => x.id === 'urn:example.org:employees/testEmployee1')).to.be.false;
+            expect([...managesProperty.value].some(x => x.id === 'urn:example.org:employees/testEmployee2')).to.be.true;
+            expect([...managesProperty.value].some(x => x.id === 'urn:example.org:employees/testEmployee1')).to.be.false;
             expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(0);
 
             managesProperty.value.clear();
@@ -459,19 +459,19 @@ describe('Instance', () => {
             const testEmployee1 = document.getInstance<Employee>('urn:example.org:employees/testEmployee1');
             const testEmployee2 = document.getInstance<Employee>('urn:example.org:employees/testEmployee2');
 
-            instance.manages.add(testEmployee1);
-            instance.manages.add(testEmployee2);
+            instance.manages.addReference(testEmployee1);
+            instance.manages.addReference(testEmployee2);
 
             expect(instance.manages.count).to.equal(2);
-            expect([...instance.manages.items][0]).to.be.instanceOf(Instance);
-            expect([...instance.manages.items][1]).to.be.instanceOf(Instance);
+            expect([...instance.manages][0]).to.be.instanceOf(Instance);
+            expect([...instance.manages][1]).to.be.instanceOf(Instance);
 
-            expect(instance.manages.has('urn:example.org:employees/testEmployee1')).to.be.true;
-            expect(instance.manages.has('urn:example.org:employees/testEmployee2')).to.be.true;
+            expect(instance.manages.hasReference('urn:example.org:employees/testEmployee1')).to.be.true;
+            expect(instance.manages.hasReference('urn:example.org:employees/testEmployee2')).to.be.true;
 
 
-            expect(instance.manages.get('urn:example.org:employees/testEmployee1')).to.be.ok;
-            expect(instance.manages.get('urn:example.org:employees/testEmployee2')).to.be.ok;
+            expect(instance.manages.getReference('urn:example.org:employees/testEmployee1')).to.be.ok;
+            expect(instance.manages.getReference('urn:example.org:employees/testEmployee2')).to.be.ok;
 
             expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(1);
             expect(testEmployee2.getReferrers('Manager/manages').count()).to.equal(1);
@@ -502,7 +502,7 @@ interface Person extends Entity {
 interface Department extends Entity {
     deptName: Record<string, string>;
     deptLocation: Location;
-    phoneNo: ContainerPropertyValues;
+    phoneNo: ContainerPropertyValues<string>;
 }
 
 interface Employee extends Person {
@@ -512,5 +512,5 @@ interface Employee extends Person {
 }
 
 interface Manager extends Employee {
-    manages: ContainerPropertyReferences<Employee>;
+    manages:ContainerPropertyValues<Employee>;
 }
