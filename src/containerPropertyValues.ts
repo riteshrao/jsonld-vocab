@@ -166,10 +166,11 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
     /**
      * @description Checks if the container has the specified reference.
      * @param {(Instance | Class | string)} ref Id or reference instance to check.
+     * @param {(string | Class)} classType Optional expected class of the reference.
      * @returns {boolean}
      * @memberof ContainerPropertyValues
      */
-    hasReference(ref: Instance | Class | string): boolean {
+    hasReference(ref: Instance | Class | string, classType?: string | Class): boolean {
         if (ref === null || ref === undefined || ref === '') {
             throw new Errors.InstancePropertyValueError(
                 Id.compact(this._vertex.id, this._vocabulary.baseIri),
@@ -179,9 +180,20 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
         }
 
         const referenceId = typeof ref === 'string' ? ref : ref.id;
-        return !!this._vertex
+        const reference = this._vertex
             .getOutgoing(this._normalizedId)
             .first(x => x.toVertex.id === Id.expand(referenceId, this._vocabulary.baseIri));
+
+        if (!reference) {
+            return false;
+        }
+
+        if (classType) {
+            const classId = typeof classType === 'string' ? classType : classType.id;
+            return reference.toVertex.isType(Id.expand(classId, this._vocabulary.baseIri));
+        } else {
+            return true;
+        }
     }
 
     /**
