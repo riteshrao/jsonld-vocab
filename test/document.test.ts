@@ -1,8 +1,9 @@
+// tslint:disable-next-line: no-import-side-effect
 import 'mocha';
 import { expect } from 'chai';
-import { 
-    Class, 
-    Document, 
+import {
+    Class,
+    Document,
     Errors,
     Vocabulary
 } from '../src';
@@ -236,6 +237,7 @@ describe('Document', () => {
             expect(projects.length).to.equal(2);
             expect(projects.some(x => x.id === 'urn:example.org:employees/janed/project/projectA')).to.be.true;
             expect(projects.some(x => x.id === 'urn:example.org:employees/janed/project/projectB')).to.be.true;
+            expect(projects.every(x => x.isInstanceOf('Project'))).to.be.true;
 
             const department = document.getInstance('urn:example.org:departments/finance');
             expect(department.getProperty('Department/name').value.getValue()).to.equal('Finance');

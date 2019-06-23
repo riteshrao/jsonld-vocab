@@ -1,9 +1,9 @@
 // tslint:disable-next-line:no-import-side-effect
 import 'mocha';
 import { expect } from 'chai';
-import { 
+import {
     Document,
-    Errors, 
+    Errors,
     Instance,
     ContainerPropertyValues,
     Vocabulary,
@@ -21,6 +21,31 @@ describe('Instance', () => {
         vocabulary = new Vocabulary('http://example.org/classes/', 'http://example.org/class/context');
         vocabulary.context.load('http://example.org/context', testContext);
         await vocabulary.load(testClasses);
+    });
+
+    describe('.id', () => {
+        let document: Document;
+
+        beforeEach(async () => {
+            document = new Document(vocabulary, {
+                idChangeHandler: (instance, document) => {
+                    if (Instance.is<Manager>(instance, 'Manager')) {
+                        for (const project of instance.project) {
+                            project.id = `${instance.id}/project/${project.projectName}`;
+                        }
+                    }
+                }
+            });
+            await document.load(testInstances);
+        });
+
+        it('should have invoked id changed handler', () => {
+            const manager = document.getInstance<Manager>('urn:example.org:employees/janed');
+            manager.id = 'urn:example.org:employees/changedjane';
+            for (const project of manager.project) {
+                expect(project.id).to.equal(`urn:example.org:employees/changedjane/project/${project.projectName}`);
+            }
+        });
     });
 
     describe('.classes', () => {
@@ -362,7 +387,7 @@ describe('Instance', () => {
             phoneNo.value.addValue('5678');
 
             const values = [...phoneNo.value];
-            
+
             expect(values.length).to.equal(2);
             expect(values[0]).to.equal('1234');
             expect(values[1]).to.equal('5678');
@@ -511,6 +536,11 @@ interface Employee extends Person {
     department: Department;
 }
 
+interface Project extends Instance {
+    projectName: string
+}
+
 interface Manager extends Employee {
-    manages:ContainerPropertyValues<Employee>;
+    manages: ContainerPropertyValues<Employee>;
+    project: ContainerPropertyValues<Project>;
 }

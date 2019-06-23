@@ -1,11 +1,12 @@
+// tslint:disable-next-line: no-import-side-effect
 import 'mocha';
 import { expect } from 'chai';
-import { 
-    Class, 
+import {
+    Class,
     Errors,
-    Instance, 
-    Property, 
-    Vocabulary, 
+    Instance,
+    Property,
+    Vocabulary,
 } from '../src';
 
 const testContext = require('./samples/context.json');

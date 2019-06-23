@@ -1,6 +1,7 @@
+// tslint:disable-next-line: no-import-side-effect
 import 'mocha';
 import { expect } from 'chai';
-import { 
+import {
     Errors,
     Vocabulary
 } from '../src';

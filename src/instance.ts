@@ -285,6 +285,27 @@ export class Instance {
     toJson<T = any>(options?: JsonFormatOptions): Promise<T> {
         return this.vertex.toJson(options);
     }
+
+    /**
+     * Checks if an instance is type or descendant of a class.
+     *
+     * @static
+     * @template T The expected instance type
+     * @param {T} instance The instance to check.
+     * @param {string} classId The expected class or ancestor of the instance.
+     * @returns {instance is T}
+     * @memberof Instance
+     */
+    static is<T extends Instance>(instance: Instance, classId: string): instance is T {
+        if (!instance) {
+            throw new ReferenceError(`Invalid instance. instance is ${instance}`);
+        }
+        if (!classId) {
+            throw new ReferenceError(`Invalid classId. classId is '${classId}'`);
+        }
+
+        return instance.classes.map(x => x.id === classId || x.isDescendantOf(classId)).some(x => x);
+    }
 }
 
 export default Instance;

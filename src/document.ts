@@ -13,14 +13,15 @@ import { ClassReference, InstanceReference, PropertyReference } from './types';
 /**
  *  Normalizer function used to normalize instances in a document.
  */
-export type InstanceNormalizer = (instance: Instance, document: Document) => void;
+export type InstanceHandler = (instance: Instance, document: Document) => void;
 
 /**
  *  Options used by a Document.
  */
 export interface DocumentOptions {
-    blankIdNormalizer?: InstanceNormalizer;
-    blankTypeNormalizer?: InstanceNormalizer;
+    blankIdNormalizer?: InstanceHandler;
+    blankTypeNormalizer?: InstanceHandler;
+    idChangeHandler?: InstanceHandler;
 }
 
 /**
@@ -52,12 +53,14 @@ export class Document {
         }
 
         this._graph.on('vertexIdChanged', (vertex, previousId) => {
-            const prevInstanceId = Id.expand(previousId, this.vocabulary.baseIri);
-            const instanceId = Id.expand(vertex.id, this.vocabulary.baseIri);
-            if (this._instances.has(prevInstanceId)) {
-                const instance = this._instances.get(prevInstanceId);
-                this._instances.delete(prevInstanceId);
-                this._instances.set(instanceId, instance);
+            if (this._instances.has(previousId)) {
+                const instance = this._instances.get(previousId);
+                this._instances.delete(previousId);
+                this._instances.set(vertex.id, instance);
+            }
+            if (this._options.idChangeHandler) {
+                const instance: Instance = this._instances.get(vertex.id);
+                this._options.idChangeHandler(instance, this);
             }
         });
     }
@@ -285,11 +288,16 @@ export class Document {
         }
 
         for (const instance of blankIdInstances) {
-            const previousId = instance.id;
-            this._options.blankIdNormalizer(instance, this);
-            if (previousId !== instance.id) {
-                this._instances.delete(previousId);
-                this._instances.set(instance.id, instance);
+            // NOTE: If a idChangeHandler is registered in document options, it has the opportunity to also update its outgoing instances ids.
+            // This could cause a node that was detected as blank node to not be a blank node anymore due to a cascading id update. Before blindly
+            // re-processing a node check to make sure that node still is a blank id node before calling the blank id normalizer.
+            if (instance.vertex.isBlankNode) {
+                const previousId = instance.id;
+                this._options.blankIdNormalizer(instance, this);
+                if (previousId !== instance.id) {
+                    this._instances.delete(previousId);
+                    this._instances.set(instance.id, instance);
+                }
             }
         }
     }
