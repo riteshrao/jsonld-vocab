@@ -165,7 +165,7 @@ export class InstanceProperty {
             }
             case 'object': {
                 if (value instanceof Instance || value instanceof Class) {
-                    this._vertex.setOutgoing(this._normalizedId, Id.expand(value.id, this._vocabulary.baseIri));
+                    this._vertex.setOutgoing(this._normalizedId, Id.expand(value.id, this._vocabulary.baseIri), true);
                     return;
                 } else {
                     throw new Errors.InstancePropertyValueError(
