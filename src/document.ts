@@ -11,17 +11,12 @@ import Vocabulary from './vocabulary';
 import { ClassReference, InstanceReference, PropertyReference } from './types';
 
 /**
- *  Normalizer function used to normalize instances in a document.
- */
-export type InstanceHandler = (instance: Instance, document: Document) => void;
-
-/**
  *  Options used by a Document.
  */
 export interface DocumentOptions {
-    blankIdNormalizer?: InstanceHandler;
-    blankTypeNormalizer?: InstanceHandler;
-    idChangeHandler?: InstanceHandler;
+    blankIdNormalizer?(instance: Instance, document: Document): void;
+    blankTypeNormalizer?(instance: Instance, document: Document): void;
+    idChangeHandler?(instance: Instance, previousId: string, document: Document): void;
 }
 
 /**
@@ -60,7 +55,7 @@ export class Document {
             }
             if (this._options.idChangeHandler) {
                 const instance: Instance = this._instances.get(vertex.id);
-                this._options.idChangeHandler(instance, this);
+                this._options.idChangeHandler(instance, previousId, this);
             }
         });
     }
