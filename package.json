@@ -1,6 +1,6 @@
 {
     "name": "jsonld-vocab",
-    "version": "3.0.4",
+    "version": "3.0.5",
     "description": "Build, parse and inspect vocabularies defined as RDF classes in JSON-LD form and create documents using vocabularies",
     "main": "./lib/index.js",
     "scripts": {
@@ -48,7 +48,7 @@
     },
     "dependencies": {
         "jsiterable": "^2.0.0",
-        "jsonld-graph": "^3.0.1",
+        "jsonld-graph": "^3.0.2",
         "uri-js": "^4.2.2"
     },
     "nyc": {
