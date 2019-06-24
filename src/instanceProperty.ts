@@ -114,7 +114,14 @@ export class InstanceProperty {
         } else {
             const instanceRef = this._vertex.getOutgoing(this._normalizedId).first();
             if (instanceRef) {
-                return this._instanceProvider.getInstance(Id.expand(instanceRef.toVertex.id, this._vocabulary.baseIri));
+                const entity = this._vocabulary.getEntity(Id.expand(instanceRef.toVertex.id, this._vocabulary.baseIri));
+                if (entity) {
+                    return entity;
+                } else {
+                    return this._instanceProvider.getInstance(
+                        Id.expand(instanceRef.toVertex.id, this._vocabulary.baseIri)
+                    );
+                }
             }
 
             if (this._property.valueType === ValueType.Id || this._property.valueType === ValueType.Vocab) {
