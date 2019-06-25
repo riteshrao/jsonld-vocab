@@ -120,6 +120,16 @@ export class Instance {
     }
 
     /**
+     * @description Gets the type of the instance.
+     * @readonly
+     * @type {string}
+     * @memberof Instance
+     */
+    get typeId(): string {
+        return [...this._classes.keys()].join(',');
+    }
+
+    /**
      * @description Gets a property of the instance.
      * @param {string} id The id of the property to get.
      * @returns {InstanceProperty}
