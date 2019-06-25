@@ -1,14 +1,12 @@
 import Iterable from 'jsiterable';
 import { Vertex } from 'jsonld-graph';
 import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
-
-import * as types from './types';
-import * as Errors from './errors';
-
 import Class from './class';
-import Id from './id';
-import Property from './property';
+import * as errors from './errors';
+import * as identity from './identity';
 import InstanceProperty from './instanceProperty';
+import Property from './property';
+import * as types from './types';
 
 /**
  * @description Represents an vocabulary class instance.
@@ -52,7 +50,7 @@ export class Instance {
      * @memberof Instance
      */
     get id(): string {
-        return Id.compact(this.vertex.id, this.vocabulary.baseIri);
+        return identity.compact(this.vertex.id, this.vocabulary.baseIri);
     }
 
     /**
@@ -64,13 +62,13 @@ export class Instance {
             throw new ReferenceError(`Invalid id. id is '${value}'`);
         }
 
-        const expandedId = Id.expand(value, this.vocabulary.baseIri);
+        const expandedId = identity.expand(value, this.vocabulary.baseIri);
         if (this.vertex.id === expandedId) {
             return;
         }
 
         if (this.vocabulary.hasInstance(expandedId)) {
-            throw new Errors.DuplicateInstanceError(value);
+            throw new errors.DuplicateInstanceError(value);
         }
 
         this.vertex.id = expandedId;
@@ -132,7 +130,7 @@ export class Instance {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        return this._properties.get(Id.expand(id, this.vocabulary.baseIri, true));
+        return this._properties.get(identity.expand(id, this.vocabulary.baseIri, true));
     }
 
     /**
@@ -149,11 +147,11 @@ export class Instance {
         const property =
             typeof propertyReference === 'string' ? this.vocabulary.getProperty(propertyReference) : propertyReference;
         if (!property) {
-            throw new Errors.ResourceNotFoundError(propertyReference as string, 'Property');
+            throw new errors.ResourceNotFoundError(propertyReference as string, 'Property');
         }
 
         return this.vertex
-            .getIncoming(Id.expand(property.id, this.vocabulary.baseIri))
+            .getIncoming(identity.expand(property.id, this.vocabulary.baseIri))
             .map(({ fromVertex }) => this._instanceProvider.getInstance(fromVertex.id));
     }
 
@@ -168,7 +166,7 @@ export class Instance {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        return this._properties.has(Id.expand(id, this.vocabulary.baseIri));
+        return this._properties.has(identity.expand(id, this.vocabulary.baseIri));
     }
 
     /**
@@ -177,15 +175,15 @@ export class Instance {
      * @returns {boolean} True if the instance is an instance of the specified class, else false.
      * @memberof Instance
      */
-    isInstanceOf(classReference: string | Class): boolean {
+    isInstanceOf<T extends Instance = Instance>(classReference: string | Class): this is T {
         if (!classReference) {
             throw new ReferenceError(`Invalid classType. classType is '${classReference}'`);
         }
 
         const classId =
             typeof classReference === 'string'
-                ? Id.expand(classReference, this.vocabulary.baseIri)
-                : Id.expand(classReference.id, this.vocabulary.baseIri);
+                ? identity.expand(classReference, this.vocabulary.baseIri)
+                : identity.expand(classReference.id, this.vocabulary.baseIri);
 
         return this._classes.has(classId) || this.classes.map(x => x.isDescendantOf(classId)).some(x => x);
     }
@@ -204,10 +202,10 @@ export class Instance {
         const classType =
             typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
         if (!classType) {
-            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+            throw new errors.ResourceNotFoundError(classReference as string, 'Class');
         }
         if (!classType.isType('rdfs:Class')) {
-            throw new Errors.ResourceTypeMismatchError(classType.id, 'Class', classType.type);
+            throw new errors.ResourceTypeMismatchError(classType.id, 'Class', classType.type);
         }
 
         if (!this.isInstanceOf(classType)) {
@@ -215,14 +213,14 @@ export class Instance {
         }
 
         if (this.vertex.types.count() === 1) {
-            throw new Errors.InstanceClassRequiredError(this.id);
+            throw new errors.InstanceClassRequiredError(this.id);
         }
 
         // Remove all property values and outgoing references for class properties.
-        this.vertex.removeType(Id.expand(classType.id, this.vocabulary.baseIri));
-        this._classes.delete(Id.expand(classType.id, this.vocabulary.baseIri));
+        this.vertex.removeType(identity.expand(classType.id, this.vocabulary.baseIri));
+        this._classes.delete(identity.expand(classType.id, this.vocabulary.baseIri));
         for (const classProperty of classType.properties) {
-            const propertyId = Id.expand(classProperty.id, this.vocabulary.baseIri);
+            const propertyId = identity.expand(classProperty.id, this.vocabulary.baseIri);
             if (!this.classes.some(x => x.hasProperty(classProperty))) {
                 this.vertex.removeOutgoing(propertyId);
                 this.vertex.deleteAttribute(propertyId);
@@ -243,35 +241,37 @@ export class Instance {
             throw new ReferenceError(`Invalid classType. classType is '${classReference}'`);
         }
 
-        const classType =
-            typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType = typeof classReference === 'string'
+            ? this.vocabulary.getClass(classReference)
+            : classReference;
 
         if (!classType) {
-            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+            throw new errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
         if (!(classType instanceof Class)) {
-            throw new Errors.ResourceTypeMismatchError(classReference as string, 'Class', '');
+            throw new errors.ResourceTypeMismatchError(classReference as string, 'Class', '');
         }
 
-        if (this.isInstanceOf(classType)) {
-            return;
-        }
-
-        this.vertex.setType(Id.expand(classType.id, this.vocabulary.baseIri));
-        this._classes.set(Id.expand(classType.id, this.vocabulary.baseIri), classType);
-        for (const property of classType.properties) {
-            const propertyId = Id.expand(property.id, this.vocabulary.baseIri);
-            if (!this._properties.has(propertyId)) {
-                const instanceProperty = new InstanceProperty(
-                    this.vertex,
-                    property,
-                    this.vocabulary,
-                    this._instanceProvider
-                );
-                this._properties.set(propertyId, instanceProperty);
+        const classId = identity.expand(classType.id, this.vocabulary.baseIri);
+        if (!this._classes.has(classId) && !this.classes.map(x => x.isDescendantOf(classId)).some(x => x)) {
+            this.vertex.setType(identity.expand(classType.id, this.vocabulary.baseIri));
+            this._classes.set(identity.expand(classType.id, this.vocabulary.baseIri), classType);
+            for (const property of classType.properties) {
+                const propertyId = identity.expand(property.id, this.vocabulary.baseIri);
+                if (!this._properties.has(propertyId)) {
+                    const instanceProperty = new InstanceProperty(
+                        this.vertex,
+                        property,
+                        this.vocabulary,
+                        this._instanceProvider
+                    );
+                    this._properties.set(propertyId, instanceProperty);
+                }
             }
         }
+
+
         return this;
     }
 

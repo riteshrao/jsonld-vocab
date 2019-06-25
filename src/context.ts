@@ -1,8 +1,7 @@
 import Iterable from 'jsiterable';
 import JsonldGraph, { JsonldKeywords } from 'jsonld-graph';
-
-import * as Errors from './errors';
-import Id from './id';
+import * as errors from './errors';
+import * as identity from './identity';
 
 /**
  * @description The value type of a term in the context.
@@ -32,7 +31,7 @@ export enum ContainerType {
  * @description A term defined in the context.
  */
 export class ContextTerm {
-    constructor(public id: string, public type?: string | ValueType, public container?: ContainerType) {}
+    constructor(public id: string, public type?: string | ValueType, public container?: ContainerType) { }
 
     /**
      * @description Gets the JSON representation of a term definition.
@@ -147,7 +146,7 @@ export class Context {
         }
 
         if (!document[JsonldKeywords.context]) {
-            throw new Errors.ContextSyntaxError(`Missing ${JsonldKeywords.context} key`);
+            throw new errors.ContextSyntaxError(`Missing ${JsonldKeywords.context} key`);
         }
 
         this._graph.addContext(uri, document);
@@ -169,7 +168,7 @@ export class Context {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const compactId = Id.compact(id, this._baseIri);
+        const compactId = identity.compact(id, this._baseIri);
         for (const [term, definition] of this._terms.entries()) {
             if (definition.id === compactId) {
                 return { term, definition };
@@ -181,7 +180,7 @@ export class Context {
 
     private _parseContextObject(context: any) {
         if (context['@vocab'] && context['@vocab'] !== this._baseIri) {
-            throw new Errors.ContextSyntaxError(
+            throw new errors.ContextSyntaxError(
                 `Context '@vocab' IRI ${context['@vocab']} does not match vocabulary base ${this._baseIri}`
             );
         }
@@ -189,7 +188,7 @@ export class Context {
         for (const term of Object.getOwnPropertyNames(context).filter(x => !x.startsWith('@'))) {
             const value = typeof context[term] === 'string' ? { [JsonldKeywords.id]: context[term] } : context[term];
             if (!value['@reverse'] && !value[JsonldKeywords.id]) {
-                throw new Errors.ContextSyntaxError(
+                throw new errors.ContextSyntaxError(
                     `Invalid context term ${term}. ${JsonldKeywords.id} not specified for term`
                 );
             }
@@ -198,6 +197,7 @@ export class Context {
                 const definition = this.isDefined(term)
                     ? this.getTerm(term)
                     : this._setTerm(term, value[JsonldKeywords.id]);
+
                 definition.container = value['@container'];
                 definition.type = value[JsonldKeywords.type];
             }
@@ -214,10 +214,10 @@ export class Context {
         }
 
         if (this.isDefined(term)) {
-            throw new Errors.DuplicateContextTermError(term);
+            throw new errors.DuplicateContextTermError(term);
         }
 
-        const compactId = Id.compact(id, this._baseIri);
+        const compactId = identity.compact(id, this._baseIri);
         const existing = this.resolveTerm(id);
         if (existing) {
             // Id was already mapped to another term. Copy its definition over to the new term and delete the old one.

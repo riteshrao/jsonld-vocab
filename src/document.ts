@@ -1,14 +1,15 @@
 import Iterable from 'jsiterable';
 import JsonldGraph, { Vertex } from 'jsonld-graph';
 import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
-
-import * as Errors from './errors';
-
-import Id from './id';
+import * as errors from './errors';
+import * as identity from './identity';
 import Instance from './instance';
 import InstanceProxy from './instanceProxy';
-import Vocabulary from './vocabulary';
 import { ClassReference, InstanceReference, PropertyReference } from './types';
+import Vocabulary from './vocabulary';
+
+
+
 
 /**
  *  Options used by a Document.
@@ -88,25 +89,23 @@ export class Document {
         }
 
         if (this.vocabulary.hasResource(id) || this.vocabulary.hasInstance(id)) {
-            throw new Errors.InvalidInstanceIdError(id, 'A class or resource with the specified id already exists.');
+            throw new errors.InvalidInstanceIdError(id, 'A class or resource with the specified id already exists.');
         }
 
         if (this._instances.has(id)) {
-            throw new Errors.DuplicateInstanceError(id);
+            throw new errors.DuplicateInstanceError(id);
         }
 
         if (this.vocabulary.hasInstance(id)) {
-            throw new Errors.InvalidInstanceIdError(
-                id,
-                'Another instance with the id has already been defined in the vocabulary'
-            );
+            throw new errors.InvalidInstanceIdError(id, 'Another instance with the id has already been defined in the vocabulary');
         }
 
-        const classType =
-            typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType = typeof classReference === 'string'
+            ? this.vocabulary.getClass(classReference)
+            : classReference;
 
         if (!classType) {
-            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+            throw new errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
         const instance = InstanceProxy.proxify<T>(new Instance(this._graph.createVertex(id), this.vocabulary, this));
@@ -128,7 +127,7 @@ export class Document {
         }
 
         if (this.vocabulary.hasResource(id) || this.vocabulary.hasInstance(id)) {
-            throw new Errors.InstanceNotFoundError(id);
+            throw new errors.InstanceNotFoundError(id);
         }
 
         return this._instances.get(id);
@@ -147,14 +146,15 @@ export class Document {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}`);
         }
 
-        const classType =
-            typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType = typeof classReference === 'string'
+            ? this.vocabulary.getClass(classReference)
+            : classReference;
 
         if (!classType) {
-            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+            throw new errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
-        const classV = this._graph.getVertex(Id.expand(classType.id, this.vocabulary.baseIri));
+        const classV = this._graph.getVertex(identity.expand(classType.id, this.vocabulary.baseIri));
         if (!descendants) {
             if (!classV) {
                 return Iterable.empty();
@@ -164,34 +164,32 @@ export class Document {
         } else {
             // tslint:disable-next-line:no-this-assignment
             const that = this;
-            return new Iterable(
-                (function* getDescendantInstances() {
-                    const tracker = new Set<string>();
-                    if (classV) {
-                        // First the class instances and yield those results.
-                        for (const instanceV of classV.instances) {
+            return new Iterable((function* getDescendantInstances() {
+                const tracker = new Set<string>();
+                if (classV) {
+                    // First the class instances and yield those results.
+                    for (const instanceV of classV.instances) {
+                        if (!tracker.has(instanceV.id)) {
+                            tracker.add(instanceV.id);
+                            yield that._instances.get(instanceV.id);
+                        }
+                    }
+                }
+
+                for (const descendantTypes of classType.descendants) {
+                    const descendantV = that._graph.getVertex(
+                        identity.expand(descendantTypes.id, that.vocabulary.baseIri)
+                    );
+                    if (descendantV) {
+                        for (const instanceV of descendantV.instances) {
                             if (!tracker.has(instanceV.id)) {
                                 tracker.add(instanceV.id);
                                 yield that._instances.get(instanceV.id);
                             }
                         }
                     }
-
-                    for (const descendantTypes of classType.descendants) {
-                        const descendantV = that._graph.getVertex(
-                            Id.expand(descendantTypes.id, that.vocabulary.baseIri)
-                        );
-                        if (descendantV) {
-                            for (const instanceV of descendantV.instances) {
-                                if (!tracker.has(instanceV.id)) {
-                                    tracker.add(instanceV.id);
-                                    yield that._instances.get(instanceV.id);
-                                }
-                            }
-                        }
-                    }
-                })()
-            );
+                }
+            })());
         }
     }
 
@@ -209,7 +207,7 @@ export class Document {
         const instanceId = typeof instanceReference === 'string' ? instanceReference : instanceReference.id;
         const instanceV = this._graph.getVertex(instanceId);
         if (!instanceV) {
-            throw new Errors.InstanceNotFoundError(instanceReference as string);
+            throw new errors.InstanceNotFoundError(instanceReference as string);
         }
 
         const propertyId = propertyReference
@@ -219,7 +217,7 @@ export class Document {
             : null;
 
         return instanceV
-            .getIncoming(Id.expand(propertyId, this.vocabulary.baseIri))
+            .getIncoming(identity.expand(propertyId, this.vocabulary.baseIri))
             .map(x => this._instances.get(x.fromVertex.id));
     }
 

@@ -1,14 +1,12 @@
 import LibIterable from 'jsiterable/lib/types';
 import { Vertex } from 'jsonld-graph';
-
-import * as Errors from './errors';
-import * as types from './types';
-
-import Property from './property';
-import Id from './id';
-import { ContainerType } from './context';
-import Instance from './instance';
 import Class from './class';
+import { ContainerType, ValueType } from './context';
+import * as errors from './errors';
+import * as identity from './identity';
+import Instance from './instance';
+import Property from './property';
+import * as types from './types';
 
 export class ContainerPropertyValues<T> implements LibIterable<any> {
     private readonly _instanceProvider: types.InstanceProvider;
@@ -27,7 +25,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
         this._property = property;
         this._vocabulary = vocabulary;
         this._vertex = vertex;
-        this._normalizedId = Id.expand(this._property.id, this._vocabulary.baseIri);
+        this._normalizedId = identity.expand(this._property.id, this._vocabulary.baseIri);
     }
 
     /**
@@ -46,8 +44,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
         }
 
         for (const { toVertex } of this._vertex.getOutgoing(this._normalizedId)) {
-            const instance =
-                this._vocabulary.getInstance<T>(toVertex.id) || this._instanceProvider.getInstance<T>(toVertex.id);
+            const instance = this._vocabulary.getInstance<T>(toVertex.id) || this._instanceProvider.getInstance<T>(toVertex.id);
             if (instance) {
                 yield instance;
             }
@@ -75,17 +72,33 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      * @memberof InstancePropertyValues
      */
     addValue<T extends string | number | boolean>(value: T, language?: string): void {
+        if (this._property.type === ValueType.Id || this._property.type === ValueType.Vocab) {
+            throw new errors.InvalidOperationError(
+                `addValue`,
+                this._vertex.id,
+                this._property.type,
+                'Cannot add values to @id or @vocab container types.');
+        }
+
         if (value === null || value === undefined || value === '') {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Invalid value. Expected a valid non-null or non-empty string value'
             );
         }
 
+        if (typeof value === 'object' || typeof value === 'function' || typeof value === 'symbol') {
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
+                this._property.id,
+                'Invalid value. Only primitive data types are allowed as values.'
+            );
+        }
+
         if (language && typeof value !== 'string') {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Invalid value type. Language localization can only be specified for string values.'
             );
@@ -96,19 +109,19 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
 
     /**
      * @description Adds a reference value to the container.
-     * @param {(Instance | Class)} ref The instance, class or id of an instance to add to the contianer.
+     * @param {(Instance | Class)} ref The instance, class or id of an instance to add to the container.
      * @memberof ContainerPropertyValues
      */
     addReference(ref: Instance | Class): void {
         if (ref === null || ref === undefined) {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Expected a valid non-null instance or class reference'
             );
         }
 
-        this._vertex.setOutgoing(this._normalizedId, Id.expand(ref.id, this._vocabulary.baseIri));
+        this._vertex.setOutgoing(this._normalizedId, identity.expand(ref.id, this._vocabulary.baseIri));
     }
 
     /**
@@ -135,7 +148,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
 
         const reference = this._vertex
             .getOutgoing(this._normalizedId)
-            .first(({ toVertex }) => toVertex.id === Id.expand(referenceId, this._vocabulary.baseIri));
+            .first(({ toVertex }) => toVertex.id === identity.expand(referenceId, this._vocabulary.baseIri));
 
         if (reference) {
             return this._instanceProvider.getInstance<T>(reference.toVertex.id);
@@ -153,8 +166,8 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      */
     hasValue<T extends string | number | boolean>(value: T, language?: string): boolean {
         if (value === null || value === undefined || value === '') {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Invalid value. Expected a valid non-null or non-empty string value'
             );
@@ -172,8 +185,8 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      */
     hasReference(ref: Instance | Class | string, classType?: string | Class): boolean {
         if (ref === null || ref === undefined || ref === '') {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Expected a valid non-null instance or class reference'
             );
@@ -182,7 +195,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
         const referenceId = typeof ref === 'string' ? ref : ref.id;
         const reference = this._vertex
             .getOutgoing(this._normalizedId)
-            .first(x => x.toVertex.id === Id.expand(referenceId, this._vocabulary.baseIri));
+            .first(x => x.toVertex.id === identity.expand(referenceId, this._vocabulary.baseIri));
 
         if (!reference) {
             return false;
@@ -190,7 +203,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
 
         if (classType) {
             const classId = typeof classType === 'string' ? classType : classType.id;
-            return reference.toVertex.isType(Id.expand(classId, this._vocabulary.baseIri));
+            return reference.toVertex.isType(identity.expand(classId, this._vocabulary.baseIri));
         } else {
             return true;
         }
@@ -202,9 +215,17 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      * @memberof ContainerPropertyValues
      */
     removeValue<T extends string | number | boolean>(value: T): void {
+        if (this._property.type === ValueType.Id || this._property.type === ValueType.Vocab) {
+            throw new errors.InvalidOperationError(
+                `removeValue`,
+                this._vertex.id,
+                this._property.type,
+                'Cannot remove values to @id or @vocab container types.');
+        }
+
         if (value === null || value === undefined || value === '') {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Invalid value. Expected a valid non-null or non-empty string value'
             );
@@ -220,8 +241,8 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      */
     removeReference(ref: Instance | Class | string): void {
         if (ref === null || ref === undefined || ref === '') {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Expected a valid non-null instance or class reference'
             );
@@ -233,11 +254,12 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
 
     /**
      * @description Clears the container of all values and references.
+     * @param {string} [language] Optional language to clear values of.
      * @memberof ContainerPropertyValues
      */
-    clear(): void {
-        this._vertex.deleteAttribute(this._normalizedId);
+    clear(language?: string): void {
         this._vertex.removeOutgoing(this._normalizedId);
+        this._vertex.deleteAttribute(this._normalizedId, language);
     }
 }
 

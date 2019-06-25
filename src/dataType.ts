@@ -79,7 +79,7 @@ export class DataType {
      * @param {string} comment The comment of the data type.
      * @memberof DataType
      */
-    private constructor(public readonly id: string, public readonly label: string, public readonly comment: string) {}
+    private constructor(public readonly id: string, public readonly label: string, public readonly comment: string) { }
 
     /**
      * @description Parses a data type id and returns the represented data type instance.

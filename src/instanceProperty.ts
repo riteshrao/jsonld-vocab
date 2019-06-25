@@ -1,14 +1,12 @@
 import { Vertex } from 'jsonld-graph';
-
-import * as types from './types';
-import * as Errors from './errors';
-
-import Id from './id';
-import Instance from './instance';
-import ContainerPropertyValues from './containerPropertyValues';
-import Property from './property';
-import { ValueType, ContainerType } from './context';
 import Class from './class';
+import ContainerPropertyValues from './containerPropertyValues';
+import { ContainerType, ValueType } from './context';
+import * as errors from './errors';
+import * as identity from './identity';
+import Instance from './instance';
+import Property from './property';
+import * as types from './types';
 
 export class InstanceProperty {
     private readonly _vertex: Vertex;
@@ -39,7 +37,7 @@ export class InstanceProperty {
         this._property = property;
         this._vocabulary = vocabulary;
         this._instanceProvider = instanceProvider;
-        this._normalizedId = Id.expand(this._property.id, this._vocabulary.baseIri);
+        this._normalizedId = identity.expand(this._property.id, this._vocabulary.baseIri);
     }
 
     /**
@@ -114,12 +112,12 @@ export class InstanceProperty {
         } else {
             const instanceRef = this._vertex.getOutgoing(this._normalizedId).first();
             if (instanceRef) {
-                const entity = this._vocabulary.getEntity(Id.expand(instanceRef.toVertex.id, this._vocabulary.baseIri));
+                const entity = this._vocabulary.getEntity(identity.expand(instanceRef.toVertex.id, this._vocabulary.baseIri));
                 if (entity) {
                     return entity;
                 } else {
                     return this._instanceProvider.getInstance(
-                        Id.expand(instanceRef.toVertex.id, this._vocabulary.baseIri)
+                        identity.expand(instanceRef.toVertex.id, this._vocabulary.baseIri)
                     );
                 }
             }
@@ -138,8 +136,8 @@ export class InstanceProperty {
      */
     set value(value: any) {
         if (this._property.container) {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Value setter for container properties cannot be used. Use add/remove value methods instead on the property values instead.'
             );
@@ -155,8 +153,8 @@ export class InstanceProperty {
             (this._property.valueType === ValueType.Id || this._property.valueType === ValueType.Vocab) &&
             (!(value instanceof Instance) && !(value instanceof Class))
         ) {
-            throw new Errors.InstancePropertyValueError(
-                Id.compact(this._vertex.id, this._vocabulary.baseIri),
+            throw new errors.InstancePropertyValueError(
+                identity.compact(this._vertex.id, this._vocabulary.baseIri),
                 this._property.id,
                 'Value for @id or @vocab properties MUST be a valid Instance or Class reference'
             );
@@ -172,19 +170,19 @@ export class InstanceProperty {
             }
             case 'object': {
                 if (value instanceof Instance || value instanceof Class) {
-                    this._vertex.setOutgoing(this._normalizedId, Id.expand(value.id, this._vocabulary.baseIri), true);
+                    this._vertex.setOutgoing(this._normalizedId, identity.expand(value.id, this._vocabulary.baseIri), true);
                     return;
                 } else {
-                    throw new Errors.InstancePropertyValueError(
-                        Id.compact(this._vertex.id, this._vocabulary.baseIri),
+                    throw new errors.InstancePropertyValueError(
+                        identity.compact(this._vertex.id, this._vocabulary.baseIri),
                         this._property.id,
                         `Value of type ${typeof value} is not supported.`
                     );
                 }
             }
             default: {
-                throw new Errors.InstancePropertyValueError(
-                    Id.compact(this._vertex.id, this._vocabulary.baseIri),
+                throw new errors.InstancePropertyValueError(
+                    identity.compact(this._vertex.id, this._vocabulary.baseIri),
                     this._property.id,
                     `Value of type ${typeof value} is not supported.`
                 );

@@ -1,14 +1,13 @@
 {
     "name": "jsonld-vocab",
-    "version": "3.0.5",
+    "version": "3.0.6",
     "description": "Build, parse and inspect vocabularies defined as RDF classes in JSON-LD form and create documents using vocabularies",
     "main": "./lib/index.js",
     "scripts": {
         "clean": "rimraf ./lib ./coverage",
         "coverage": "npm run test && opener ./coverage/index.html",
         "lint": "tslint --config tslint.json --project tsconfig.json 'src/**/*'",
-        "pretty": "prettier --config .prettierrc.yml --write \"src/**/*.ts\"",
-        "build": "npm run pretty && npm run lint && tsc",
+        "build": "npm run lint && tsc",
         "test": "nyc mocha",
         "prepublishOnly": "npm run clean && npm run build && npm run test"
     },
@@ -36,7 +35,6 @@
         "mocha": "^6.1.4",
         "nyc": "^14.1.1",
         "opener": "^1.5.1",
-        "prettier": "1.18.2",
         "rimraf": "^2.6.3",
         "source-map-support": "^0.5.11",
         "ts-node": "^8.0.3",
@@ -48,7 +46,7 @@
     },
     "dependencies": {
         "jsiterable": "^2.0.0",
-        "jsonld-graph": "^3.0.2",
+        "jsonld-graph": "^3.0.3",
         "uri-js": "^4.2.2"
     },
     "nyc": {

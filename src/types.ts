@@ -4,12 +4,11 @@
 
 import Iterable from 'jsiterable';
 import JsonldGraph from 'jsonld-graph';
-
 import Class from './class';
 import Context from './context';
 import DataType from './dataType';
-import Property from './property';
 import Instance from './instance';
+import Property from './property';
 import Resource from './resource';
 
 export type ClassReference = string | Class;
