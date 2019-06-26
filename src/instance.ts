@@ -149,7 +149,7 @@ export class Instance {
      * @returns {Instance}
      * @memberof Instance
      */
-    getReferrers(propertyReference: string | Property): Iterable<Instance> {
+    getReferrers<T extends Instance = Instance>(propertyReference: string | Property): Iterable<T> {
         if (!propertyReference) {
             throw new ReferenceError(`Invalid property. property is '${propertyReference}'`);
         }
