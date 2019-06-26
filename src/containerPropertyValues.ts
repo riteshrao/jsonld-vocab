@@ -7,6 +7,7 @@ import * as identity from './identity';
 import Instance from './instance';
 import Property from './property';
 import * as types from './types';
+import Iterable from 'jsiterable';
 
 export class ContainerPropertyValues<T> implements LibIterable<any> {
     private readonly _instanceProvider: types.InstanceProvider;
@@ -63,6 +64,16 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
         } else {
             return this._vertex.getOutgoing(this._normalizedId).count();
         }
+    }
+
+    /**
+     * @description Gets all the items in the container.
+     * @readonly
+     * @type {Iterable<T>}
+     * @memberof ContainerPropertyValues
+     */
+    get items(): Iterable<T> {
+        return new Iterable(this);
     }
 
     /**
