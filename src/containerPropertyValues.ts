@@ -82,7 +82,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      * @param {string} [language] Optional language of the value to add.
      * @memberof InstancePropertyValues
      */
-    addValue<T extends string | number | boolean>(value: T, language?: string): void {
+    addValue<V extends string | number | boolean>(value: V, language?: string): void {
         if (this._property.type === ValueType.Id || this._property.type === ValueType.Vocab) {
             throw new errors.InvalidOperationError(
                 `addValue`,
@@ -141,7 +141,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      * @returns {T}
      * @memberof ContainerPropertyValues
      */
-    getValue(language?: string): T {
+    getValue(language?: string): string | boolean | number {
         return this._vertex.getAttributeValue(this._normalizedId, language);
     }
 
@@ -175,7 +175,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      * @returns {boolean}
      * @memberof ContainerPropertyValues
      */
-    hasValue<T extends string | number | boolean>(value: T, language?: string): boolean {
+    hasValue<V extends string | number | boolean>(value: V, language?: string): boolean {
         if (value === null || value === undefined || value === '') {
             throw new errors.InstancePropertyValueError(
                 identity.compact(this._vertex.id, this._vocabulary.baseIri),
@@ -225,7 +225,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      * @param {T} value The value to remove.
      * @memberof ContainerPropertyValues
      */
-    removeValue<T extends string | number | boolean>(value: T): void {
+    removeValue<V extends string | number | boolean>(value: V): void {
         if (this._property.type === ValueType.Id || this._property.type === ValueType.Vocab) {
             throw new errors.InvalidOperationError(
                 `removeValue`,
