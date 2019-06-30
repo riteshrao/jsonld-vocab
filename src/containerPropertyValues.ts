@@ -141,7 +141,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
      * @returns {T}
      * @memberof ContainerPropertyValues
      */
-    getValue(language?: string): string | boolean | number {
+    getValue<V extends string | boolean | number>(language?: string): V {
         return this._vertex.getAttributeValue(this._normalizedId, language);
     }
 
