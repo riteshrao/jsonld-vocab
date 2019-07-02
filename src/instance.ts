@@ -126,7 +126,9 @@ export class Instance {
      * @memberof Instance
      */
     get typeId(): string {
-        return [...this._classes.keys()].join(',');
+        return [...this._classes.keys()]
+            .map(x => identity.compact(x, this.vocabulary.baseIri))
+            .join(',');
     }
 
     /**
