@@ -1,71 +1,74 @@
 {
-  "name": "jsonld-vocab",
-  "version": "2.0.5",
-  "description": "Build, parse and inspect vocabularies defined as RDF classes in JSON-LD form and create documents using vocabularies",
-  "main": "./lib/index.js",
-  "scripts": {
-    "clean": "rimraf ./lib ./coverage",
-    "coverage": "npm run test && opener ./coverage/index.html",
-    "build": "tsc",
-    "test": "nyc mocha",
-    "prepublishOnly": "npm run clean && npm run build && npm run test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/riteshrao/jsonld-vocab.git"
-  },
-  "keywords": [
-    "json-ld",
-    "rdf",
-    "rdf-classes",
-    "graph"
-  ],
-  "author": "Ritesh Rao",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/riteshrao/jsonld-vocab/issues"
-  },
-  "homepage": "https://github.com/riteshrao/jsonld-vocab#readme",
-  "devDependencies": {
-    "@types/chai": "^4.1.7",
-    "@types/mocha": "^5.2.6",
-    "@types/node": "^11.11.2",
-    "chai": "^4.2.0",
-    "mocha": "^6.1.4",
-    "nyc": "^13.3.0",
-    "opener": "^1.5.1",
-    "rimraf": "^2.6.3",
-    "source-map-support": "^0.5.11",
-    "ts-node": "^8.0.3",
-    "tslint": "^5.14.0",
-    "tslint-no-unused-expression-chai": "^0.1.4",
-    "typescript": "^3.4.1"
-  },
-  "dependencies": {
-    "jsiterable": "^1.1.2",
-    "jsonld-graph": "^2.0.7",
-    "uri-js": "^4.2.2"
-  },
-  "nyc": {
-    "all": true,
-    "cache": false,
-    "include": [
-      "src/**/*.ts"
+    "name": "jsonld-vocab",
+    "version": "3.0.17",
+    "description": "Build, parse and inspect vocabularies defined as RDF classes in JSON-LD form and create documents using vocabularies",
+    "main": "./lib/index.js",
+    "scripts": {
+        "clean": "rimraf ./lib ./coverage",
+        "coverage": "npm run test && opener ./coverage/index.html",
+        "lint": "tslint --config tslint.json --project tsconfig.json 'src/**/*'",
+        "build": "npm run lint && tsc",
+        "test": "nyc mocha",
+        "prepublishOnly": "npm run clean && npm run build && npm run test"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/riteshrao/jsonld-vocab.git"
+    },
+    "keywords": [
+        "json-ld",
+        "rdf",
+        "rdf-classes",
+        "graph"
     ],
-    "exclude": [
-      "**/*.d.ts",
-      "test/**",
-      "src/types.ts"
-    ],
-    "reporter": [
-      "html",
-      "json",
-      "text-summary"
-    ],
-    "extension": [
-      ".ts"
-    ],
-    "source-map": true,
-    "instrument": true
-  }
+    "author": "Ritesh Rao",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/riteshrao/jsonld-vocab/issues"
+    },
+    "homepage": "https://github.com/riteshrao/jsonld-vocab#readme",
+    "devDependencies": {
+        "@types/chai": "^4.1.7",
+        "@types/mocha": "^5.2.6",
+        "@types/node": "^11.11.2",
+        "chai": "^4.2.0",
+        "mocha": "^6.1.4",
+        "nyc": "^14.1.1",
+        "opener": "^1.5.1",
+        "rimraf": "^2.6.3",
+        "source-map-support": "^0.5.11",
+        "ts-node": "^8.0.3",
+        "tslint": "^5.14.0",
+        "tslint-config-airbnb": "^5.11.1",
+        "tslint-config-prettier": "^1.18.0",
+        "tslint-no-unused-expression-chai": "^0.1.4",
+        "typescript": "^3.4.1"
+    },
+    "dependencies": {
+        "jsiterable": "^3.0.0",
+        "jsonld-graph": "^3.0.7",
+        "uri-js": "^4.2.2"
+    },
+    "nyc": {
+        "all": true,
+        "cache": false,
+        "include": [
+            "src/**/*.ts"
+        ],
+        "exclude": [
+            "**/*.d.ts",
+            "test/**",
+            "src/types.ts"
+        ],
+        "reporter": [
+            "html",
+            "json",
+            "text-summary"
+        ],
+        "extension": [
+            ".ts"
+        ],
+        "source-map": true,
+        "instrument": true
+    }
 }

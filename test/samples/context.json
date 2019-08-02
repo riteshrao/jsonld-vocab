@@ -8,7 +8,10 @@
             "@id": "Person/location",
             "@type": "@id"
         },
-        "deptName": "Department/name",
+        "deptName": {
+            "@id": "Department/name",
+            "@container": "@language"
+        },
         "deptLocation": {
             "@id": "Department/location",
             "@type": "@id"
@@ -34,6 +37,7 @@
         },
         "project": {
             "@id": "Manager/project",
+            "@type": "@id",
             "@container": "@set"
         },
         "projectName": "Project/name"

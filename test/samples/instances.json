@@ -14,18 +14,27 @@
         {
             "@id": "urn:example.org:departments/finance",
             "@type": "Department",
-            "name": "Finance",
+            "deptName": {
+                "en": "Finance",
+                "fr": "La finance"
+            },
             "deptLocation": "urn:example.org:locations/nashua"
         },
         {
             "@id": "urn:example.org:departments/hr",
             "@type": "Department",
-            "name": "Human Resources",
+            "deptName": {
+                "en": "Human Resources",
+                "fr": "Ressources humaines"
+            },
             "deptLocation": "urn:example.org:locations/scranton"
         },
         {
             "@id": "urn:example.org:employees/jdoe",
-            "@type": ["Employee", "Manager"],
+            "@type": [
+                "Employee",
+                "Manager"
+            ],
             "firstName": "John",
             "lastName": "Doe",
             "level": 1
@@ -41,14 +50,23 @@
         },
         {
             "@id": "urn:example.org:employees/janed",
-            "@type": ["Contractor", "Manager"],
+            "@type": [
+                "Contractor",
+                "Manager"
+            ],
             "firstName": "Jane",
             "lastName": "Doe",
             "location": "urn:example.org:locations/nashua",
             "department": "urn:example.org:departments/hr",
             "project": [
-                { "projectName": "projectA" },
-                { "projectName": "projectB" }
+                {
+                    "@type": "Project",
+                    "projectName": "projectA"
+                },
+                {
+                    "@type": "Project",
+                    "projectName": "projectB"
+                }
             ]
         }
     ]

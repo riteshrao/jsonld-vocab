@@ -4,24 +4,21 @@
 
 import Iterable from 'jsiterable';
 import JsonldGraph from 'jsonld-graph';
-
 import Class from './class';
 import Context from './context';
 import DataType from './dataType';
-import Property from './property';
 import Instance from './instance';
+import Property from './property';
 import Resource from './resource';
-import LibIterable from 'jsiterable/lib/types';
 
 export type ClassReference = string | Class;
 export type PropertyReference = string | Property;
 export type ResourceReference = string | Resource;
 export type InstanceReference = string | Instance;
 
-export interface ContainerPropertyValues<T = any> extends LibIterable<T> {
-    add(value: any): void;
-    remove(value: any): void;
-    clear(): void;
+export interface LanguageMap {
+    value: string;
+    language?: string;
 }
 
 export interface InstanceProvider {
@@ -52,7 +49,6 @@ export interface Vocabulary extends InstanceProvider {
     removeInstance(instanceRef: InstanceReference): void;
     removeProperty(propertyRef: PropertyReference): void;
     removeResource(resourceRef: ResourceReference): void;
-    removeResource(resource: string | Resource): void;
 }
 
 export default Vocabulary;

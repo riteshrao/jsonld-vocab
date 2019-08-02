@@ -1,8 +1,7 @@
 import Iterable from 'jsiterable';
 import JsonldGraph, { JsonldKeywords } from 'jsonld-graph';
-
-import Errors from './errors';
-import Id from './id';
+import * as errors from './errors';
+import * as identity from './identity';
 
 /**
  * @description The value type of a term in the context.
@@ -10,8 +9,8 @@ import Id from './id';
  * @enum {number}
  */
 export enum ValueType {
-    id = '@id',
-    vocab = '@vocab'
+    Id = '@id',
+    Vocab = '@vocab'
 }
 
 /**
@@ -20,22 +19,19 @@ export enum ValueType {
  * @enum {number}
  */
 export enum ContainerType {
-    language = '@language',
-    id = '@id',
-    index = '@index',
-    list = '@list',
-    set = '@set',
-    type = '@type'
+    Language = '@language',
+    Id = '@id',
+    Index = '@index',
+    List = '@list',
+    Set = '@set',
+    Type = '@type'
 }
 
 /**
  * @description A term defined in the context.
  */
 export class ContextTerm {
-    constructor(
-        public id: string,
-        public type?: string | ValueType,
-        public container?: ContainerType) { }
+    constructor(public id: string, public type?: string | ValueType, public container?: ContainerType) { }
 
     /**
      * @description Gets the JSON representation of a term definition.
@@ -60,25 +56,30 @@ export class ContextTerm {
 }
 
 export class Context {
-
     // TODO: Context cache re-constitution based on term changes.
 
-    static readonly RdfNamespace = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
-    static readonly RdfsNamespace = 'http://www.w3.org/2000/01/rdf-schema#';
-    static readonly XSDNamesapce = 'http://www.w3.org/2001/XMLSchema#';
+    static readonly rdfNamespace = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+    static readonly rdfsNamespace = 'http://www.w3.org/2000/01/rdf-schema#';
+    static readonly xsdNamespace = 'http://www.w3.org/2001/XMLSchema#';
 
+    private readonly _baseIri: string;
+    private readonly _graph: JsonldGraph;
     private readonly _terms: Map<string, ContextTerm> = new Map<string, ContextTerm>();
     /**
      * Creates an instance of Context.
      * @param {string} baseIri The base vocabulary IRI of the context.
      * @memberof Context
      */
-    constructor(
-        private readonly baseIri: string,
-        private readonly graph: JsonldGraph) {
+    constructor(baseIri: string, graph: JsonldGraph) {
         if (!baseIri) {
             throw new ReferenceError(`Invalid baseIri. baseIri is '${baseIri}'`);
         }
+        if (!graph) {
+            throw new ReferenceError(`Invalid graph. graph is ${graph}`);
+        }
+
+        this._baseIri = baseIri;
+        this._graph = graph;
     }
 
     /**
@@ -98,7 +99,7 @@ export class Context {
      * @memberof Context
      */
     get definitions(): Iterable<[string, object]> {
-        return this.graph.contexts;
+        return this._graph.contexts;
     }
 
     /**
@@ -145,10 +146,10 @@ export class Context {
         }
 
         if (!document[JsonldKeywords.context]) {
-            throw new Errors.ContextSyntaxError(`Missing ${JsonldKeywords.context} key`);
+            throw new errors.ContextSyntaxError(`Missing ${JsonldKeywords.context} key`);
         }
 
-        this.graph.addContext(uri, document);
+        this._graph.addContext(uri, document);
         const context = document[JsonldKeywords.context];
         if (context instanceof Array) {
             context.filter(x => typeof x !== 'string').forEach(item => this._parseContextObject(item));
@@ -162,12 +163,12 @@ export class Context {
      * @param {string} id The id whose mapped term should be resolved.
      * @memberof Context
      */
-    resolveTerm(id: string): { term: string, definition: ContextTerm } {
+    resolveTerm(id: string): { term: string; definition: ContextTerm } {
         if (!id) {
             throw new ReferenceError(`Invalid id. id is '${id}'`);
         }
 
-        const compactId = Id.compact(id, this.baseIri);
+        const compactId = identity.compact(id, this._baseIri);
         for (const [term, definition] of this._terms.entries()) {
             if (definition.id === compactId) {
                 return { term, definition };
@@ -178,18 +179,25 @@ export class Context {
     }
 
     private _parseContextObject(context: any) {
-        if (context['@vocab'] && context['@vocab'] !== this.baseIri) {
-            throw new Errors.ContextSyntaxError(`Context '@vocab' IRI ${context['@vocab']} does not match vocabulary base ${this.baseIri}`);
+        if (context['@vocab'] && context['@vocab'] !== this._baseIri) {
+            throw new errors.ContextSyntaxError(
+                `Context '@vocab' IRI ${context['@vocab']} does not match vocabulary base ${this._baseIri}`
+            );
         }
 
         for (const term of Object.getOwnPropertyNames(context).filter(x => !x.startsWith('@'))) {
             const value = typeof context[term] === 'string' ? { [JsonldKeywords.id]: context[term] } : context[term];
             if (!value['@reverse'] && !value[JsonldKeywords.id]) {
-                throw new Errors.ContextSyntaxError(`Invalid context term ${term}. ${JsonldKeywords.id} not specified for term`);
+                throw new errors.ContextSyntaxError(
+                    `Invalid context term ${term}. ${JsonldKeywords.id} not specified for term`
+                );
             }
 
             if (!value['@reverse']) {
-                const definition = this.isDefined(term) ? this.getTerm(term) : this._setTerm(term, value[JsonldKeywords.id]);
+                const definition = this.isDefined(term)
+                    ? this.getTerm(term)
+                    : this._setTerm(term, value[JsonldKeywords.id]);
+
                 definition.container = value['@container'];
                 definition.type = value[JsonldKeywords.type];
             }
@@ -206,10 +214,10 @@ export class Context {
         }
 
         if (this.isDefined(term)) {
-            throw new Errors.DuplicateContextTermError(term);
+            throw new errors.DuplicateContextTermError(term);
         }
 
-        const compactId = Id.compact(id, this.baseIri);
+        const compactId = identity.compact(id, this._baseIri);
         const existing = this.resolveTerm(id);
         if (existing) {
             // Id was already mapped to another term. Copy its definition over to the new term and delete the old one.

@@ -1,11 +1,10 @@
 import Iterable from 'jsiterable';
-import { Vertex, JsonldKeywords } from 'jsonld-graph';
-
-import Id from './id';
+import { JsonldKeywords, Vertex } from 'jsonld-graph';
+import * as errors from './errors';
+import * as identity from './identity';
 import Property from './property';
 import Resource from './resource';
-import Errors from './errors';
-import Vocabulary, { PropertyReference, ClassReference } from './types';
+import Vocabulary, { ClassReference, PropertyReference } from './types';
 
 /**
  * @description Class resource
@@ -14,7 +13,6 @@ import Vocabulary, { PropertyReference, ClassReference } from './types';
  * @extends {Resource}
  */
 export class Class extends Resource {
-
     private _properties = new Set<string>();
 
     /**
@@ -37,9 +35,10 @@ export class Class extends Resource {
      * @memberof Class
      */
     get ancestors(): Iterable<Class> {
-        const _that = this;
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
         return new Iterable<Class>((function* classAncestors() {
-            for (const parent of _that.parentClasses) {
+            for (const parent of that.parentClasses) {
                 for (const ancestor of parent.ancestors) {
                     yield ancestor;
                 }
@@ -55,9 +54,10 @@ export class Class extends Resource {
      * @memberof Class
      */
     get descendants(): Iterable<Class> {
-        const _that = this;
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
         return new Iterable<Class>((function* classDescendants() {
-            for (const child of _that.subClasses) {
+            for (const child of that.subClasses) {
                 for (const descendant of child.descendants) {
                     yield descendant;
                 }
@@ -83,13 +83,14 @@ export class Class extends Resource {
      * @memberof Class
      */
     get properties(): Iterable<Property> {
-        const _that = this;
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
         return new Iterable((function* classProperties() {
-            for (const ownProperty of _that.ownProperties) {
+            for (const ownProperty of that.ownProperties) {
                 yield ownProperty;
             }
 
-            for (const parent of _that.parentClasses) {
+            for (const parent of that.parentClasses) {
                 for (const parentProp of parent.properties) {
                     yield parentProp;
                 }
@@ -104,11 +105,9 @@ export class Class extends Resource {
      * @memberof Class
      */
     get subClasses(): Iterable<Class> {
-        return this.vertex
-            .getIncoming('rdfs:subClassOf')
-            .map(edge => {
-                return this.vocabulary.getClass(edge.fromVertex.id);
-            });
+        return this.vertex.getIncoming('rdfs:subClassOf').map(edge => {
+            return this.vocabulary.getClass(edge.fromVertex.id);
+        });
     }
 
     /**
@@ -118,15 +117,16 @@ export class Class extends Resource {
      * @memberof Class
      */
     get parentClasses(): Iterable<Class> {
-        const _that = this;
-        return new Iterable<Class>(function* parentClasses() {
-            const visisted = new Set<string>();
-            for (const { toVertex } of _that.vertex.getOutgoing('rdfs:subClassOf')) {
-                if (!visisted.has(toVertex.id)) {
-                    yield _that.vocabulary.getClass(toVertex.id);
+        // tslint:disable-next-line:no-this-assignment
+        const that = this;
+        return new Iterable<Class>((function* parentClasses() {
+            const visited = new Set<string>();
+            for (const { toVertex } of that.vertex.getOutgoing('rdfs:subClassOf')) {
+                if (!visited.has(toVertex.id)) {
+                    yield that.vocabulary.getClass(toVertex.id);
                 }
             }
-        }());
+        })());
     }
 
     /**
@@ -140,14 +140,14 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid property. property is ${property}`);
         }
 
-        const propertyId = Id.expand(property.id, this.vocabulary.baseIri);
+        const propertyId = identity.expand(property.id, this.vocabulary.baseIri);
         const propertyExists = this._properties.has(propertyId) || this.ancestors.some(x => x.hasProperty(propertyId));
         if (propertyExists) {
             return;
         }
 
         property.setDomain(this);
-        this._properties.add(Id.expand(property.id, this.vocabulary.baseIri));
+        this._properties.add(identity.expand(property.id, this.vocabulary.baseIri));
     }
 
     /**
@@ -161,9 +161,9 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid id. id is ${id}`);
         }
 
-        const propertyId = Id.expand(id, this.vocabulary.baseIri, true);
+        const propertyId = identity.expand(id, this.vocabulary.baseIri, true);
         if (this._properties.has(propertyId)) {
-            throw new Errors.DuplicateResourceError(id);
+            throw new errors.DuplicateResourceError(id);
         }
 
         const property = this.vocabulary.createProperty(propertyId);
@@ -183,9 +183,9 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid id. id is ${id}`);
         }
 
-        const _class = this.vocabulary.createClass(id);
-        _class.makeSubClassOf(this);
-        return _class;
+        const classReference = this.vocabulary.createClass(id);
+        classReference.makeSubClassOf(this);
+        return classReference;
     }
 
     /**
@@ -199,7 +199,7 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid id. id is ${id}`);
         }
 
-        const propertyId = Id.expand(id, this.vocabulary.baseIri, true);
+        const propertyId = identity.expand(id, this.vocabulary.baseIri, true);
         if (this._properties.has(propertyId)) {
             return this.vocabulary.getProperty(propertyId);
         } else {
@@ -210,7 +210,6 @@ export class Class extends Resource {
                 }
             }
         }
-
     }
 
     /**
@@ -224,7 +223,7 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid property`);
         }
 
-        const propertyId = typeof property === 'string' ? Id.expand(property, this.vocabulary.baseIri) : property.id;
+        const propertyId = typeof property === 'string' ? identity.expand(property, this.vocabulary.baseIri) : property.id;
         if (this._properties.has(propertyId)) {
             return true;
         }
@@ -250,8 +249,9 @@ export class Class extends Resource {
         }
 
         const propertyId = typeof property === 'string'
-            ? Id.expand(property, this.vocabulary.baseIri, true)
-            : Id.expand(property.id, this.vocabulary.baseIri);
+            ? identity.expand(property, this.vocabulary.baseIri, true)
+            : identity.expand(property.id, this.vocabulary.baseIri);
+
         return this._properties.has(propertyId);
     }
 
@@ -267,9 +267,10 @@ export class Class extends Resource {
         }
 
         const classId = typeof classReference === 'string'
-            ? Id.expand(classReference, this.vocabulary.baseIri)
-            : Id.expand(classReference.id, this.vocabulary.baseIri);
-        return this.descendants.some(x => Id.expand(x.id, this.vocabulary.baseIri) === classId);
+            ? identity.expand(classReference, this.vocabulary.baseIri)
+            : identity.expand(classReference.id, this.vocabulary.baseIri);
+
+        return this.descendants.some(x => identity.expand(x.id, this.vocabulary.baseIri) === classId);
     }
 
     /**
@@ -284,10 +285,10 @@ export class Class extends Resource {
         }
 
         const classId = typeof classType === 'string'
-            ? Id.expand(classType, this.vocabulary.baseIri)
-            : Id.expand(classType.id, this.vocabulary.baseIri);
+            ? identity.expand(classType, this.vocabulary.baseIri)
+            : identity.expand(classType.id, this.vocabulary.baseIri);
 
-        return this.ancestors.some(x => Id.expand(x.id, this.vocabulary.baseIri) === classId);
+        return this.ancestors.some(x => identity.expand(x.id, this.vocabulary.baseIri) === classId);
     }
 
     /**
@@ -302,12 +303,10 @@ export class Class extends Resource {
         }
 
         const classId = typeof classType === 'string'
-            ? Id.expand(classType, this.vocabulary.baseIri, true)
-            : Id.expand(classType.id, this.vocabulary.baseIri);
+            ? identity.expand(classType, this.vocabulary.baseIri, true)
+            : identity.expand(classType.id, this.vocabulary.baseIri);
 
-        return this.vertex
-            .getOutgoing('rdfs:subClassOf')
-            .some(x => x.toVertex.id === classId);
+        return this.vertex.getOutgoing('rdfs:subClassOf').some(x => x.toVertex.id === classId);
     }
 
     /**
@@ -320,12 +319,15 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid classReference. classReference is ${classReference}`);
         }
 
-        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType = typeof classReference === 'string'
+            ? this.vocabulary.getClass(classReference)
+            : classReference;
+
         if (!classType) {
-            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+            throw new errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
-        this.vertex.setOutgoing('rdfs:subClassOf', Id.expand(classType.id, this.vocabulary.baseIri), false);
+        this.vertex.setOutgoing('rdfs:subClassOf', identity.expand(classType.id, this.vocabulary.baseIri), false);
         return this;
     }
 
@@ -340,12 +342,15 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid property. property is '${propertyReference}'`);
         }
 
-        const propertyRef = typeof propertyReference === 'string' ? this.getProperty(propertyReference) : propertyReference;
+        const propertyRef = typeof propertyReference === 'string'
+            ? this.getProperty(propertyReference)
+            : propertyReference;
+
         if (!propertyRef) {
-            throw new Errors.ResourceNotFoundError(propertyReference as string, 'Property');
+            throw new errors.ResourceNotFoundError(propertyReference as string, 'Property');
         }
 
-        this._properties.delete(Id.expand(propertyRef.id, this.vocabulary.baseIri));
+        this._properties.delete(identity.expand(propertyRef.id, this.vocabulary.baseIri));
         propertyRef.removeDomain(this);
         if (propertyRef.domains.count() === 0 && deleteOwned) {
             this.vocabulary.removeProperty(propertyRef);
@@ -364,12 +369,15 @@ export class Class extends Resource {
             throw new ReferenceError(`Invalid classReference. classReference is '${classReference}'`);
         }
 
-        const classType = typeof classReference === 'string' ? this.vocabulary.getClass(classReference) : classReference;
+        const classType = typeof classReference === 'string'
+            ? this.vocabulary.getClass(classReference)
+            : classReference;
+
         if (!classType) {
-            throw new Errors.ResourceNotFoundError(classReference as string, 'Class');
+            throw new errors.ResourceNotFoundError(classReference as string, 'Class');
         }
 
-        this.vertex.removeOutgoing('rdfs:subClassOf', Id.expand(classType.id, this.vocabulary.baseIri));
+        this.vertex.removeOutgoing('rdfs:subClassOf', identity.expand(classType.id, this.vocabulary.baseIri));
         return this;
     }
 
@@ -380,6 +388,7 @@ export class Class extends Resource {
      * @returns {Promise<any>}
      * @memberof Class
      */
+    // tslint:disable-next-line: promise-function-async
     toJson(includeProps: boolean = false): Promise<any> {
         if (!includeProps) {
             return this.vertex.toJson({
@@ -433,11 +442,12 @@ export class Class extends Resource {
      * @memberof Class
      */
     static create(id: string, vocabulary: Vocabulary): Class {
-        const normalizedId = Id.expand(id, vocabulary.baseIri, true);
+        const normalizedId = identity.expand(id, vocabulary.baseIri, true);
         if (vocabulary.hasResource(normalizedId) ||
             vocabulary.hasDataType(normalizedId) ||
             vocabulary.hasInstance(normalizedId)) {
-            throw new Errors.DuplicateResourceError(id);
+
+            throw new errors.DuplicateResourceError(id);
         }
 
         const classV = vocabulary.graph.createVertex(normalizedId);

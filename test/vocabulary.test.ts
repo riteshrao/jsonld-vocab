@@ -1,6 +1,13 @@
+// tslint:disable-next-line: no-import-side-effect
 import 'mocha';
 import { expect } from 'chai';
-import { Vocabulary, Errors, Instance, Property, Class } from '../src';
+import {
+    Class,
+    Errors,
+    Instance,
+    Property,
+    Vocabulary,
+} from '../src';
 
 const testContext = require('./samples/context.json');
 const testVocabulary = require('./samples/vocabulary.json');
@@ -11,8 +18,7 @@ const invalidIds = [
     '0startsWith',
     'endsWith/',
     '/startsWith',
-    'starts*With',
-    'foo:prefix'
+    'starts*With'
 ];
 
 describe('Vocabulary', () => {

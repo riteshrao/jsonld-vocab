@@ -1,6 +1,10 @@
+// tslint:disable-next-line: no-import-side-effect
 import 'mocha';
 import { expect } from 'chai';
-import { Vocabulary, Errors } from '../src';
+import {
+    Errors,
+    Vocabulary
+} from '../src';
 
 const testContext = require('./samples/context.json');
 const testClasses = require('./samples/vocabulary.json');
@@ -132,7 +136,7 @@ describe('Class', () => {
 
         it('should throw when property id is invalid', () => {
             const managerClass = vocabulary.getClass('Manager');
-            expect(() => managerClass.createProperty('xsder:foo')).to.throw(Errors.InvalidResourceIdError);
+            expect(() => managerClass.createProperty('xsder-foo')).to.throw(Errors.InvalidResourceIdError);
         });
 
         it('should create new property', () => {
