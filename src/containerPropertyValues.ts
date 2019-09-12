@@ -132,7 +132,9 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
             );
         }
 
-        this._vertex.setOutgoing(this._normalizedId, identity.expand(ref.id, this._vocabulary.baseIri));
+        const identityId = identity.expand(ref.id, this._vocabulary.baseIri);
+        const createIfNotExists = this._vocabulary.hasInstance(identityId) || this._vocabulary.hasInstance(identityId);
+        this._vertex.setOutgoing(this._normalizedId, identity.expand(ref.id, this._vocabulary.baseIri), createIfNotExists);
     }
 
     /**
@@ -260,7 +262,7 @@ export class ContainerPropertyValues<T> implements LibIterable<any> {
         }
 
         const referenceId = typeof ref === 'string' ? ref : ref.id;
-        this._vertex.removeOutgoing(this._normalizedId, referenceId);
+        this._vertex.removeOutgoing(this._normalizedId, identity.expand(referenceId, this._vocabulary.baseIri));
     }
 
     /**

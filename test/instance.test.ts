@@ -509,6 +509,18 @@ describe('Instance', () => {
             expect(testEmployee1.getReferrers('Manager/manages').count()).to.equal(0);
             expect(testEmployee2.getReferrers('Manager/manages').count()).to.equal(0);
         });
+
+        it('can get, set and delete vocabulary instance references', () => {
+            const instance = document.getInstance<Manager>('urn:example.org:employees/testManager1');
+            const project = document.vocabulary.getInstance('Project/vocabProject');
+            instance.project.addReference(project);
+
+            expect(instance.project.count).to.equal(1);
+            expect(instance.project.items.first().id).to.equal('Project/vocabProject');
+
+            instance.project.removeReference(project);
+            expect(instance.project.count).to.equal(0);
+        });
     });
 });
 

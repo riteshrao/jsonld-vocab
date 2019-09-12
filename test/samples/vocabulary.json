@@ -179,7 +179,15 @@
         },
         {
             "@id": "Manager/managerB",
-            "@type": ["Employee", "Manager"]
+            "@type": [
+                "Employee",
+                "Manager"
+            ]
+        },
+        {
+            "@id": "Project/vocabProject",
+            "@type": "Project",
+            "projectName": "Vocab Project"
         }
     ]
 }
