@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "jsiterable": "^3.0.1",
-    "jsonld-graph": "file:jsonld-graph-3.0.8.tgz"
+    "jsonld-graph": "^3.0.8"
   },
   "nyc": {
     "all": true,

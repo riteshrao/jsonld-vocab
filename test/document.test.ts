@@ -41,12 +41,6 @@ describe('Document', () => {
             expect(() => document.createInstance('Person', '')).to.throw(ReferenceError);
         });
 
-        it('should throw when instance id is not a valid IRI', () => {
-            expect(() => document.createInstance('Person', 'foobar')).to.throw();
-            expect(() => document.createInstance('Person', 'mailto://foobar')).to.throw();
-            expect(() => document.createInstance('Person', 'urn:incomplete')).to.throw();
-        });
-
         it('should throw when class is not found', () => {
             expect(() => document.createInstance('ClassNotFound', 'urn:example.org:persons/TestPerson')).to.throw(Errors.ResourceNotFoundError);
         });
