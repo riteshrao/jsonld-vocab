@@ -58,9 +58,9 @@ export class ContextTerm {
 export class Context {
     // TODO: Context cache re-constitution based on term changes.
 
-    static readonly rdfNamespace = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
-    static readonly rdfsNamespace = 'http://www.w3.org/2000/01/rdf-schema#';
-    static readonly xsdNamespace = 'http://www.w3.org/2001/XMLSchema#';
+    static readonly rdfNamespace = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#/';
+    static readonly rdfsNamespace = 'http://www.w3.org/2000/01/rdf-schema#/';
+    static readonly xsdNamespace = 'http://www.w3.org/2001/XMLSchema#/';
 
     private readonly _baseIri: string;
     private readonly _graph: JsonldGraph;

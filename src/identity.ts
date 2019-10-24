@@ -1,4 +1,3 @@
-import * as urijs from 'uri-js';
 import * as errors from './errors';
 
 const resourceIdPattern = /^[a-zA-Z][a-zA-Z0-9_//:]*[a-zA-Z0-9]$/; // Supports both HTTP/s and URN formats
@@ -20,9 +19,9 @@ export function expand(id: string, base: string, validate: boolean = false) {
         validateResourceId(idPart);
     }
 
-    const parsed = urijs.parse(id, { iri: true });
-    if (!parsed.scheme) {
-        return `vocab:${id}`;
+    const schemeIndex = id.indexOf(':');
+    if (schemeIndex <= 0) {
+        return `vocab:${id}`
     } else if (id.startsWith(base)) {
         return id.replace(base, 'vocab:');
     } else {
