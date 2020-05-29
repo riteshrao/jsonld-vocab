@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import {
     Errors,
     Vocabulary
-} from '../src';
+} from '../src/index.ts.old';
 
 const testContext = require('./samples/context.json');
 const testClasses = require('./samples/vocabulary.json');

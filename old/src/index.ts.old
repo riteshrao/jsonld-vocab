@@ -1,0 +1,16 @@
+import * as Errors from './errors';
+import Vocabulary from './vocabulary.ts.old';
+
+export default Vocabulary;
+
+export * from './class.ts.old';
+export * from './containerPropertyValues.ts.old';
+export * from './context';
+export * from './dataType';
+export * from './document';
+export * from './instance.ts.old';
+export * from './instanceProperty.ts.old';
+export * from './property';
+export * from './vocabulary.ts.old';
+export { Errors };
+

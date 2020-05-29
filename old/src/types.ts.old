@@ -4,10 +4,10 @@
 
 import Iterable from 'jsiterable';
 import JsonldGraph from 'jsonld-graph';
-import Class from './class';
+import Class from './class.ts.old';
 import Context from './context';
 import DataType from './dataType';
-import Instance from './instance';
+import Instance from './instance.ts.old';
 import Property from './property';
 import Resource from './resource';
 

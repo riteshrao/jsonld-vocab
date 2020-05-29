@@ -1,12 +1,12 @@
 import Iterable from 'jsiterable';
 import { Vertex } from 'jsonld-graph';
 import JsonFormatOptions from 'jsonld-graph/lib/formatOptions';
-import Class from './class';
+import Class from './class.ts.old';
 import * as errors from './errors';
 import * as identity from './identity';
-import InstanceProperty from './instanceProperty';
+import InstanceProperty from './instanceProperty.ts.old';
 import Property from './property';
-import * as types from './types';
+import * as types from './types.ts.old';
 
 /**
  * @description Represents an vocabulary class instance.

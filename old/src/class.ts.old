@@ -4,7 +4,7 @@ import * as errors from './errors';
 import * as identity from './identity';
 import Property from './property';
 import Resource from './resource';
-import Vocabulary, { ClassReference, PropertyReference } from './types';
+import Vocabulary, { ClassReference, PropertyReference } from './types.ts.old';
 
 /**
  * @description Class resource

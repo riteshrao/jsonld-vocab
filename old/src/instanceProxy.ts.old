@@ -1,4 +1,4 @@
-import Instance from './instance';
+import Instance from './instance.ts.old';
 
 export namespace InstanceProxy {
     /**

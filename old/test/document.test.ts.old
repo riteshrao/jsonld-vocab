@@ -6,7 +6,7 @@ import {
     Document,
     Errors,
     Vocabulary
-} from '../src';
+} from '../src/index.ts.old';
 
 const testContext = require('./samples/context.json');
 const testVocab = require('./samples/vocabulary.json');

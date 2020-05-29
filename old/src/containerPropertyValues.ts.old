@@ -1,12 +1,12 @@
 import LibIterable from 'jsiterable/lib/types';
 import { Vertex } from 'jsonld-graph';
-import Class from './class';
+import Class from './class.ts.old';
 import { ContainerType, ValueType } from './context';
 import * as errors from './errors';
 import * as identity from './identity';
-import Instance from './instance';
+import Instance from './instance.ts.old';
 import Property from './property';
-import * as types from './types';
+import * as types from './types.ts.old';
 import Iterable from 'jsiterable';
 
 export class ContainerPropertyValues<T> implements LibIterable<any> {

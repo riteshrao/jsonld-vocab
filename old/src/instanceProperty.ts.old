@@ -1,12 +1,12 @@
 import { Vertex } from 'jsonld-graph';
-import Class from './class';
-import ContainerPropertyValues from './containerPropertyValues';
+import Class from './class.ts.old';
+import ContainerPropertyValues from './containerPropertyValues.ts.old';
 import { ContainerType, ValueType } from './context';
 import * as errors from './errors';
 import * as identity from './identity';
-import Instance from './instance';
+import Instance from './instance.ts.old';
 import Property from './property';
-import * as types from './types';
+import * as types from './types.ts.old';
 
 export class InstanceProperty {
     private readonly _vertex: Vertex;

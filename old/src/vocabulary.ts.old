@@ -1,15 +1,15 @@
 import Iterable from 'jsiterable';
 import JsonldGraph, { JsonldKeywords, Vertex } from 'jsonld-graph';
-import Class from './class';
+import Class from './class.ts.old';
 import Context from './context';
 import DataType from './dataType';
 import * as errors from './errors';
 import * as identity from './identity';
-import Instance from './instance';
-import InstanceProxy from './instanceProxy';
+import Instance from './instance.ts.old';
+import InstanceProxy from './instanceProxy.ts.old';
 import Property from './property';
 import Resource from './resource';
-import * as types from './types';
+import * as types from './types.ts.old';
 
 /**
  * @description RDF based vocabulary.

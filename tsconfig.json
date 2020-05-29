@@ -4,23 +4,28 @@
         "declaration": true,
         "forceConsistentCasingInFileNames": true,
         "module": "commonjs",
+        "esModuleInterop": true,
         "moduleResolution": "node",
         "noImplicitAny": true,
         "noUnusedLocals": true,
+        "strictNullChecks": true,
         "sourceMap": true,
         "suppressImplicitAnyIndexErrors": true,
         "removeComments": false,
-        "rootDir": "./src",
+        "rootDir": "old/src",
         "outDir": "./lib",
         "baseUrl": ".",
         "paths": {
-            "jsonld": ["types/jsonld.d.ts"]
+            "jsonld": [
+                "types/jsonld.d.ts"
+            ]
         }
     },
     "exclude": [
         "node_modules",
         "lib",
-        "test"
+        "old/test",
+        "old/src/old"
     ],
     "compileOnSave": false,
     "buildOnSave": false
